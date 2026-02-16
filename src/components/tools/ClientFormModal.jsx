@@ -19,6 +19,7 @@ const clientSchema = z.object({
     city: z.string().min(1, "Cidade é obrigatória"),
     state: z.string().min(2, "Estado é obrigatório"),
     address: z.string().optional(),
+    ie: z.string().optional(),
     instagram: z.string().optional(),
     notes: z.string().optional()
 });
@@ -46,7 +47,7 @@ export function ClientFormModal({ open, onClose, onSaved, editingClient, user, u
                 });
             } else {
                 reset({
-                    name: '', phone: '', email: '', cpf: '', address: '',
+                    name: '', phone: '', email: '', cpf: '', ie: '', address: '',
                     instagram: '', notes: '', cep: '', street: '',
                     number: '', neighborhood: '', city: '', state: '',
                     birthDate: ''
@@ -164,6 +165,15 @@ export function ClientFormModal({ open, onClose, onSaved, editingClient, user, u
                             placeholder="000.000.000-00"
                         />
                         {errors.cpf && <span className="text-red-500 text-xs font-bold ml-1">{errors.cpf.message}</span>}
+                    </div>
+
+                    <div>
+                        <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1 mb-1 block">Inscrição Estadual</label>
+                        <input
+                            {...register('ie')}
+                            className="w-full p-4 bg-slate-50 rounded-xl font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-600/20"
+                            placeholder="Isento ou Número"
+                        />
                     </div>
 
                     <div>

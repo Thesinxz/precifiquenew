@@ -48,7 +48,14 @@ export function ProductForm({ open, onClose, item, onSaved, orgId, userId, setti
         quantity: '1',
         description: '',
         imageUrl: '',
-        showInCatalog: true
+        description: '',
+        imageUrl: '',
+        showInCatalog: true,
+        // Fiscal Data
+        ncm: '',
+        cest: '',
+        origin: '0',
+        cfop: '5102'
     });
 
     useEffect(() => {
@@ -69,7 +76,12 @@ export function ProductForm({ open, onClose, item, onSaved, orgId, userId, setti
             quantity: '1',
             description: '',
             imageUrl: '',
-            showInCatalog: true
+            imageUrl: '',
+            showInCatalog: true,
+            ncm: '',
+            cest: '',
+            origin: '0',
+            cfop: '5102'
         });
     }, [item, open, settings]);
 
@@ -453,7 +465,60 @@ export function ProductForm({ open, onClose, item, onSaved, orgId, userId, setti
                                 </div>
                             </div>
 
-                            {/* Section 4: Internal Notes */}
+                            {/* Section 4: Fiscal Data */}
+                            <div className="space-y-6">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <div className="w-1.5 h-4 bg-purple-500 rounded-full" />
+                                    <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Dados Fiscais (NFe/NFCe)</h3>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-5">
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">NCM</label>
+                                        <input
+                                            type="text"
+                                            placeholder="Ex: 8517.13.00"
+                                            value={formData.ncm || ''}
+                                            onChange={e => setFormData({ ...formData, ncm: e.target.value })}
+                                            className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-5 rounded-[1.5rem] outline-none focus:ring-4 focus:ring-purple-500/5 focus:border-purple-500 transition-all font-mono font-bold text-slate-700 dark:text-white"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">CEST</label>
+                                        <input
+                                            type="text"
+                                            placeholder="Ex: 21.053.01"
+                                            value={formData.cest || ''}
+                                            onChange={e => setFormData({ ...formData, cest: e.target.value })}
+                                            className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-5 rounded-[1.5rem] outline-none focus:ring-4 focus:ring-purple-500/5 focus:border-purple-500 transition-all font-mono font-bold text-slate-700 dark:text-white"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Origem</label>
+                                        <select
+                                            value={formData.origin || '0'}
+                                            onChange={e => setFormData({ ...formData, origin: e.target.value })}
+                                            className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-5 rounded-[1.5rem] outline-none focus:ring-4 focus:ring-purple-500/5 focus:border-purple-500 transition-all font-bold text-slate-700 dark:text-white active:scale-[0.98]"
+                                        >
+                                            <option value="0">0 - Nacional</option>
+                                            <option value="1">1 - Estrangeira (Imp. Direta)</option>
+                                            <option value="2">2 - Estrangeira (Adq. no M. Interno)</option>
+                                        </select>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">CFOP Padrão</label>
+                                        <input
+                                            type="text"
+                                            placeholder="Ex: 5102"
+                                            value={formData.cfop || ''}
+                                            onChange={e => setFormData({ ...formData, cfop: e.target.value })}
+                                            className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-5 rounded-[1.5rem] outline-none focus:ring-4 focus:ring-purple-500/5 focus:border-purple-500 transition-all font-mono font-bold text-slate-700 dark:text-white"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Section 5: Internal Notes */}
                             <div className="space-y-4">
                                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Observações Internas (Opcional)</label>
                                 <textarea
@@ -626,7 +691,7 @@ export function ProductForm({ open, onClose, item, onSaved, orgId, userId, setti
                         )}
                     </button>
                 </div>
-            </div>
-        </div>
+            </div >
+        </div >
     );
 }

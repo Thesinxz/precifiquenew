@@ -19,6 +19,7 @@ import { MovementHistory } from './MovementHistory';
 import { TrashView } from './TrashView';
 import { AIImportDrawer } from './AIImportDrawer';
 import { ThermalLabelModal } from '../../ui/ThermalLabelModal';
+import { XMLImportModal } from '../XMLImportModal';
 
 export function StockManager({ user, userProfile, settings, isSalesMode }) {
     const { showToast } = useToast();
@@ -35,6 +36,7 @@ export function StockManager({ user, userProfile, settings, isSalesMode }) {
     const [selectedModelName, setSelectedModelName] = useState(null);
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [isAIImportOpen, setIsAIImportOpen] = useState(false);
+    const [isXMLImportOpen, setIsXMLImportOpen] = useState(false);
     const [isLabelModalOpen, setIsLabelModalOpen] = useState(false);
     const [selectedForLabels, setSelectedForLabels] = useState([]);
     const [editingItem, setEditingItem] = useState(null);
@@ -326,6 +328,14 @@ export function StockManager({ user, userProfile, settings, isSalesMode }) {
                     >
                         <Sparkles className="w-6 h-6" />
                     </button>
+
+                    <button
+                        onClick={() => setIsXMLImportOpen(true)}
+                        className="p-4 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 text-purple-500 rounded-[1.5rem] shadow-sm hover:border-purple-500/50 transition-all active:scale-95"
+                        title="Importar XML de Fornecedor"
+                    >
+                        <FileDown className="w-6 h-6" />
+                    </button>
                 </div>
             </div>
 
@@ -470,6 +480,17 @@ export function StockManager({ user, userProfile, settings, isSalesMode }) {
                 onImported={handleAIImported}
                 orgId={orgId}
                 userId={userId}
+            />
+
+            {/* XML Import Modal */}
+            <XMLImportModal
+                open={isXMLImportOpen}
+                onClose={() => {
+                    setIsXMLImportOpen(false);
+                    loadData();
+                }}
+                user={user}
+                userProfile={userProfile}
             />
 
             {/* Thermal Label Modal */}

@@ -418,6 +418,32 @@ export const StockService = {
     },
 
     /**
+     * Get product by barcode
+     */
+    getProductByBarcode: async (orgId, barcode) => {
+        if (!orgId || !barcode) return null;
+        try {
+            const q = query(
+                collection(db, COLLECTION_NAME),
+                where("organizationId", "==", orgId),
+                where("barcode", "==", barcode),
+                limit(1)
+            );
+            const snapshot = await getDocs(q);
+            if (snapshot.empty) return null;
+
+            const doc = snapshot.docs[0];
+            return {
+                id: doc.id,
+                ...doc.data()
+            };
+        } catch (error) {
+            console.error("Error finding product by barcode:", error);
+            return null;
+        }
+    },
+
+    /**
      * Get available quantity (total - reserved)
      */
     getAvailableQuantity: (item) => {

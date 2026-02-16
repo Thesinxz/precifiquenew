@@ -23,7 +23,8 @@ import { LoyaltySettings } from './sections/LoyaltySettings';
 import { BrandingSettings } from './sections/BrandingSettings';
 import { IntegrationsSettings } from './sections/IntegrationsSettings';
 import { CostCenterSettings } from './sections/CostCenterSettings';
-import { Building2 } from 'lucide-react';
+import { FiscalSettings } from './sections/FiscalSettings';
+import { Building2, FileText } from 'lucide-react';
 
 import { useToast } from '../../ui/Toast';
 
@@ -65,6 +66,7 @@ export function SettingsPanel({ settings, onSave, userProfile }) {
         { id: 'branding', label: 'Marca & TV Mode', icon: Palette },
         { id: 'financial', label: 'Financeiro', icon: CreditCard },
         { id: 'cost_centers', label: 'Centros de Custo', icon: Building2 },
+        { id: 'fiscal', label: 'Fiscal & NFe', icon: FileText },
         { id: 'categories', label: 'Categorias & Garantias', icon: Tags },
         { id: 'messages', label: 'Mensagens (WhatsApp)', icon: MessageSquare },
         { id: 'gifts', label: 'Brindes & Vitrine', icon: Gift },
@@ -75,6 +77,8 @@ export function SettingsPanel({ settings, onSave, userProfile }) {
 
     const renderContent = () => {
         switch (activeTab) {
+            case 'fiscal':
+                return <FiscalSettings data={localSettings.fiscal} onChange={(d) => handleUpdate('fiscal', d)} />;
             case 'profile':
                 return <ProfileSettings data={localSettings.company} onChange={(d) => handleUpdate('company', d)} />;
             case 'financial':

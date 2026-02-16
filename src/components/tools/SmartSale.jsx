@@ -18,6 +18,7 @@ import { formatCurrency, cn, generateReferenceCode } from '../../lib/utils';
 import { SalesService } from '../../services/salesService';
 import { UserService } from '../../services/userService';
 import { ClientFormModal } from './ClientFormModal';
+import { InvoiceEmissionModal } from './InvoiceEmissionModal';
 
 export function SmartSale({ user, userProfile, settings }) {
     const [view, setView] = useState('list'); // 'list' | 'new-sale'
@@ -77,6 +78,7 @@ export function SmartSale({ user, userProfile, settings }) {
     // Post-Sale Modal
     const [lastSale, setLastSale] = useState(null);
     const [showPostSaleModal, setShowPostSaleModal] = useState(false);
+    const [showInvoiceModal, setShowInvoiceModal] = useState(false);
 
     // Tech Lab / Trade-In Integration
     const [showLabModal, setShowLabModal] = useState(false);
@@ -2601,13 +2603,13 @@ export function SmartSale({ user, userProfile, settings }) {
 
                                 {/* NFE/NFCE */}
                                 <button
-                                    onClick={() => alert("Módulo Fiscal (Emissão em breve)")}
-                                    className="p-6 bg-slate-50 dark:bg-slate-950 border-2 border-slate-100 rounded-[2rem] flex flex-col items-center gap-3 hover:border-indigo-500 hover:bg-indigo-50 transition-all group"
+                                    onClick={() => setShowInvoiceModal(true)}
+                                    className="p-6 bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-950 dark:to-purple-950 border-2 border-indigo-200 dark:border-indigo-800 rounded-[2rem] flex flex-col items-center gap-3 hover:border-indigo-500 hover:shadow-lg hover:shadow-indigo-200 dark:hover:shadow-indigo-900/50 transition-all group"
                                 >
-                                    <div className="p-4 bg-white dark:bg-slate-900 rounded-2xl shadow-sm dark:shadow-slate-900/50 text-slate-400 group-hover:text-indigo-600 transition-colors">
-                                        <TicketPercent className="w-8 h-8" />
+                                    <div className="p-4 bg-white dark:bg-slate-900 rounded-2xl shadow-sm dark:shadow-slate-900/50 text-indigo-600 group-hover:scale-110 transition-transform">
+                                        <FileText className="w-8 h-8" />
                                     </div>
-                                    <span className="text-xs font-black uppercase tracking-widest">Emitir NF-e / NFC-e</span>
+                                    <span className="text-xs font-black uppercase tracking-widest text-indigo-700 dark:text-indigo-400">Emitir NF-e / NFC-e</span>
                                 </button>
                             </div>
 
@@ -2724,6 +2726,18 @@ export function SmartSale({ user, userProfile, settings }) {
                                         <Package className="w-5 h-5 text-slate-400 group-hover:text-amber-500" />
                                         <span className="text-[10px] font-black uppercase">Etiqueta</span>
                                     </button>
+
+                                    {/* NFe/NFCe Emission Button */}
+                                    <button
+                                        onClick={() => {
+                                            setShowInvoiceModal(true);
+                                        }}
+                                        className="p-4 bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-950 dark:to-purple-950 border-2 border-indigo-200 dark:border-indigo-800 rounded-2xl flex flex-col items-center gap-2 hover:border-indigo-500 hover:shadow-lg hover:shadow-indigo-200 dark:hover:shadow-indigo-900/50 transition-all group"
+                                    >
+                                        <FileText className="w-5 h-5 text-indigo-600 group-hover:scale-110 transition-transform" />
+                                        <span className="text-[10px] font-black uppercase text-indigo-700 dark:text-indigo-400">NF-e / NFC-e</span>
+                                    </button>
+
                                     <button onClick={() => setEditingSale(selectedSale)} className="p-4 bg-indigo-50 border border-indigo-100 rounded-2xl flex flex-col items-center gap-2 hover:border-indigo-500 transition-all group">
                                         <Settings2 className="w-5 h-5 text-indigo-400 group-hover:text-indigo-600" />
                                         <span className="text-[10px] font-black uppercase text-indigo-600">Alterar Dados</span>
@@ -2892,6 +2906,14 @@ export function SmartSale({ user, userProfile, settings }) {
                     </div>
                 )
             }
+
+            {/* Invoice Emission Modal */}
+            <InvoiceEmissionModal
+                open={showInvoiceModal}
+                onClose={() => setShowInvoiceModal(false)}
+                sale={selectedSale || lastSale}
+                orgId={userProfile?.organizationId || user?.uid}
+            />
         </div >
     );
 }
