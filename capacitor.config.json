@@ -1,0 +1,14 @@
+{
+  "appId": "com.ihubpro.app",
+  "appName": "Phone Smart",
+  "webDir": "dist",
+  "plugins": {
+    "PushNotifications": {
+      "presentationOptions": [
+        "badge",
+        "sound",
+        "alert"
+      ]
+    }
+  }
+}

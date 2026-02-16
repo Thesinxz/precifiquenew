@@ -1,0 +1,188 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // AUTH HELPER
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // USERS (Public Read for Store Profile, Auth Write)
+    match /users/{userId} {
+      allow read: if true;
+      allow create: if isSignedIn() && request.auth.uid == userId;
+      allow update: if isSignedIn() && (
+        request.auth.uid == userId || 
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organizationId == resource.data.organizationId &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['owner', 'admin'])
+      );
+      allow delete: if isSignedIn() && (
+        request.auth.uid == userId || 
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organizationId == resource.data.organizationId &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'owner')
+      );
+    }
+
+    // SETTINGS (Public Read for Store Info, Auth Write)
+    match /settings/{docId} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
+    // STOCK (Public Read for Catalog, Auth Write for Admin)
+    match /stock/{itemId} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
+    // PUBLIC ACTIONS (Leads, Orders, Proposals)
+    match /proposals/{proposalId} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
+    match /leads/{leadId} {
+      allow read, write: if true; // Relaxed for progressive checkout capture
+    }
+
+    match /orders/{orderId} {
+      allow create: if true;
+      allow read, update: if true; // Relaxed for status tracking/updates
+      allow delete: if isSignedIn();
+    }
+
+    // CHATS (Public Create/Read/Update for Anonymous Chat Support)
+    match /chats/{chatId} {
+      allow read, write: if true; 
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    // ADMIN ONLY COLLECTIONS
+    match /calculations/{docId} {
+      allow read, write: if isSignedIn();
+    }
+
+    match /clients/{clientId} {
+      allow read, write: if isSignedIn() && (
+        resource == null || 
+        resource.data.organizationId == getUserData().organizationId ||
+        resource.data.organizationId == request.auth.uid ||
+        resource.data.userId == request.auth.uid
+      );
+    }
+
+    match /sales/{saleId} {
+      allow read, write: if isSignedIn() && (
+        resource == null || 
+        resource.data.organizationId == getUserData().organizationId ||
+        resource.data.organizationId == request.auth.uid ||
+        resource.data.userId == request.auth.uid
+      );
+    }
+
+    match /cashflow/{docId} {
+      allow read, write: if isSignedIn();
+    }
+
+    match /financialMovements/{docId} {
+      allow read, write: if isSignedIn();
+    }
+
+    match /expenses/{docId} {
+      allow read, write: if isSignedIn();
+    }
+
+    match /history/{docId} {
+      allow read, write: if isSignedIn();
+    }
+
+    match /purchases/{docId} {
+      allow read, write: if isSignedIn();
+    }
+    
+    match /automations/{docId} {
+       allow read, write: if isSignedIn();
+    }
+
+    match /stockMovements/{docId} {
+      allow read: if isSignedIn();
+      allow create: if true; // Required for public checkout tracking
+      allow update, delete: if isSignedIn();
+    }
+    
+    match /internal_requests/{docId} {
+      allow read, write: if isSignedIn();
+    }
+
+    match /technical_lab/{docId} {
+      allow read: if isSignedIn() && (
+        resource == null || 
+        resource.data.organizationId == getUserData().organizationId ||
+        resource.data.organizationId == request.auth.uid
+      );
+      allow create: if isSignedIn() && (
+        request.resource.data.organizationId == getUserData().organizationId ||
+        request.resource.data.organizationId == request.auth.uid
+      );
+      allow update, delete: if isSignedIn() && (
+        resource.data.organizationId == getUserData().organizationId ||
+        resource.data.organizationId == request.auth.uid
+      );
+    }
+
+    match /counters/{docId} {
+      allow read, write: if isSignedIn();
+    }
+
+    match /loyaltyWallets/{docId} {
+      allow read, write: if isSignedIn();
+    }
+
+    match /loyaltyTransactions/{docId} {
+      allow read, write: if isSignedIn();
+    }
+
+    match /receivables/{docId} {
+      allow read, write: if isSignedIn();
+    }
+
+    match /payables/{docId} {
+      allow read, write: if isSignedIn();
+    }
+
+    match /trash/{docId} {
+      allow read, write: if isSignedIn();
+    }
+
+    match /cashierSessions/{docId} {
+      allow read, write: if isSignedIn();
+    }
+
+    match /cashierMovements/{docId} {
+      allow read, write: if isSignedIn();
+    }
+
+    // SHORT LINKS (Public Read for Slug Resolution)
+    match /short_links/{slug} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
+    // DASHBOARD EXTRAS
+    match /announcements/{docId} {
+      allow read, write: if isSignedIn();
+    }
+    
+    match /dashboard_tasks/{docId} {
+      allow read, write: if isSignedIn();
+    }
+
+    // DEFAULT DENY (Safety Net)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
