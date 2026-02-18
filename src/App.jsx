@@ -285,11 +285,8 @@ function AppContent() {
             <Route path="receivables" element={<ReceivablesPage user={user} userProfile={userProfile} settings={appSettings} />} />
             <Route path="payables" element={<PayablesPage user={user} userProfile={userProfile} settings={appSettings} />} />
             <Route path="automations" element={<AutomationsPage user={user} userProfile={userProfile} settings={appSettings} />} />
-            <Route path="team" element={<TeamPage user={user} userProfile={userProfile} settings={appSettings} />} />
-            <Route path="terms" element={<TermsManager user={user} userProfile={userProfile} settings={appSettings} />} />
-            <Route path="history" element={<HistoryPage user={user} />} />
-            <Route path="wiki" element={<WikiPage />} />
-            <Route path="requests" element={<InternalRequests user={user} userProfile={userProfile} settings={appSettings} />} />
+            <Route path="requests" element={<InternalRequests user={user} userProfile={userProfile} />} />
+
             <Route path="settings" element={<SettingsPanel user={user} userProfile={userProfile} settings={appSettings} onSave={async (newSettings) => {
               const targetId = userProfile?.organizationId || user?.uid;
               await SettingsService.saveSettings(newSettings, targetId);

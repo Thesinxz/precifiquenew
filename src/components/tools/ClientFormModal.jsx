@@ -100,8 +100,8 @@ export function ClientFormModal({ open, onClose, onSaved, editingClient, user, u
     if (!open) return null;
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in">
-            <div className="bg-white w-full max-w-4xl rounded-[1.5rem] p-8 shadow-2xl relative animate-in zoom-in-95 max-h-[90vh] overflow-y-auto no-scrollbar">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in" onClick={onClose}>
+            <div className="bg-white w-full max-w-4xl rounded-[1.5rem] p-8 shadow-2xl relative animate-in zoom-in-95 max-h-[90vh] overflow-y-auto no-scrollbar" onClick={(e) => e.stopPropagation()}>
                 <button
                     type="button"
                     onClick={onClose}
@@ -208,14 +208,17 @@ export function ClientFormModal({ open, onClose, onSaved, editingClient, user, u
                                     let v = e.target.value.replace(/\D/g, '');
                                     if (v.length > 5) v = v.replace(/^(\d{5})(\d)/, '$1-$2');
                                     setValue('cep', v);
+
+                                    // Only fetch if complete
                                     if (v.replace(/\D/g, '').length === 8) {
-                                        handleCepBlur({ target: { value: v } });
+                                        // Use a timeout to avoid blocking the UI thread or immediate state clashes
+                                        setTimeout(() => handleCepBlur({ target: { value: v } }), 100);
                                     }
                                 }}
                                 onBlur={(e) => {
-                                    register('cep').onBlur(e);
                                     handleCepBlur(e);
                                 }}
+                                onClick={(e) => e.stopPropagation()} // Prevent closing if click outside logic exists
                                 className="w-full p-4 bg-white rounded-xl font-bold text-slate-700 border border-slate-100 outline-none focus:ring-2 focus:ring-indigo-600/20"
                                 placeholder="00000-000"
                             />

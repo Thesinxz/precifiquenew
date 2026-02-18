@@ -194,7 +194,7 @@ export function StockManager({ user, userProfile, settings, isSalesMode }) {
             }
             showToast(`${count} itens padronizados!`, "success");
             loadData();
-        } catch (e) {
+        } catch {
             showToast("Erro ao padronizar", "error");
         } finally {
             setIsLoading(false);
@@ -225,7 +225,7 @@ export function StockManager({ user, userProfile, settings, isSalesMode }) {
             }
             showToast(`${newItems.length} itens importados!`, "success");
             loadData();
-        } catch (e) {
+        } catch {
             showToast("Erro na importação", "error");
         } finally {
             setIsLoading(false);
@@ -237,14 +237,14 @@ export function StockManager({ user, userProfile, settings, isSalesMode }) {
             {/* Header Section */}
             <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8 mb-10 mt-6">
                 <div>
-                    <h1 className="text-4xl font-black text-slate-800 dark:text-white tracking-tighter mb-2">
-                        VeloStock <span className="text-indigo-600">Pro</span>
+                    <h1 className="text-5xl font-black text-slate-800 dark:text-white tracking-tighter mb-2">
+                        VeloStock <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 to-violet-500">Pro</span>
                     </h1>
-                    <p className="text-slate-500 font-medium">Gestão inteligente de inventário e ativos.</p>
+                    <p className="text-slate-500 font-medium text-lg">Gestão inteligente de inventário e ativos.</p>
                 </div>
 
                 {/* Main Navigation Tabs */}
-                <div className="flex p-1.5 bg-slate-100 dark:bg-slate-800/50 backdrop-blur-md rounded-[1.5rem] overflow-x-auto max-w-full">
+                <div className="flex p-2 bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl border border-white/20 dark:border-white/10 rounded-full shadow-lg shadow-indigo-500/5 overflow-x-auto max-w-full">
                     {[
                         { id: 'inventory', label: 'Estoque', icon: Smartphone },
                         { id: 'parts', label: 'Peças', icon: Wrench },
@@ -255,14 +255,17 @@ export function StockManager({ user, userProfile, settings, isSalesMode }) {
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
                             className={cn(
-                                "flex items-center gap-2 px-6 py-3 rounded-2xl text-[11px] uppercase font-black tracking-widest transition-all shrink-0",
+                                "flex items-center gap-2 px-6 py-3 rounded-full text-xs uppercase font-black tracking-widest transition-all shrink-0 relative overflow-hidden",
                                 activeTab === tab.id
-                                    ? "bg-white dark:bg-slate-700 text-indigo-600 dark:text-white shadow-xl shadow-indigo-500/10"
-                                    : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                                    ? "text-white shadow-lg shadow-indigo-500/20"
+                                    : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-white/50"
                             )}
                         >
-                            <tab.icon className="w-4 h-4" />
-                            <span>{tab.label}</span>
+                            {activeTab === tab.id && (
+                                <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 to-violet-600" />
+                            )}
+                            <tab.icon className="w-4 h-4 relative z-10" />
+                            <span className="relative z-10">{tab.label}</span>
                         </button>
                     ))}
                 </div>
@@ -286,7 +289,7 @@ export function StockManager({ user, userProfile, settings, isSalesMode }) {
                         placeholder="Pesquisar por modelo, IMEI, cor, categoria..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-5 pl-16 rounded-[2rem] outline-none focus:border-indigo-500/50 focus:ring-4 focus:ring-indigo-500/5 text-slate-700 dark:text-white font-medium transition-all shadow-sm"
+                        className="w-full bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl border border-white/20 dark:border-white/10 p-5 pl-16 rounded-[2rem] outline-none focus:border-indigo-500/50 focus:ring-4 focus:ring-indigo-500/10 text-slate-700 dark:text-white font-medium transition-all shadow-sm"
                     />
                     <div className="absolute right-6 top-1/2 -translate-y-1/2 flex items-center gap-2">
                         <button className="p-2 text-slate-300 hover:text-slate-500 dark:hover:text-slate-400 transition-colors">
@@ -296,16 +299,16 @@ export function StockManager({ user, userProfile, settings, isSalesMode }) {
                 </div>
 
                 <div className="flex gap-3">
-                    <div className="bg-slate-100 dark:bg-slate-800/50 p-1.5 rounded-2xl flex border border-transparent dark:border-slate-700">
+                    <div className="bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl p-1.5 rounded-[1.5rem] flex border border-white/20 dark:border-white/10 shadow-sm">
                         <button
                             onClick={() => setViewMode('vitrine')}
-                            className={cn("p-3 rounded-xl transition-all", viewMode === 'vitrine' ? "bg-white dark:bg-slate-700 text-indigo-600 dark:text-white shadow-sm" : "text-slate-400")}
+                            className={cn("p-3 rounded-2xl transition-all", viewMode === 'vitrine' ? "bg-white dark:bg-slate-700 text-indigo-600 dark:text-white shadow-sm" : "text-slate-400 hover:text-indigo-500")}
                         >
                             <LayoutGrid className="w-5 h-5" />
                         </button>
                         <button
                             onClick={() => setViewMode('list')}
-                            className={cn("p-3 rounded-xl transition-all", viewMode === 'list' ? "bg-white dark:bg-slate-700 text-indigo-600 dark:text-white shadow-sm" : "text-slate-400")}
+                            className={cn("p-3 rounded-2xl transition-all", viewMode === 'list' ? "bg-white dark:bg-slate-700 text-indigo-600 dark:text-white shadow-sm" : "text-slate-400 hover:text-indigo-500")}
                         >
                             <List className="w-5 h-5" />
                         </button>
@@ -316,14 +319,14 @@ export function StockManager({ user, userProfile, settings, isSalesMode }) {
                             setEditingItem(null);
                             setIsFormOpen(true);
                         }}
-                        className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-4 rounded-[1.5rem] font-black uppercase text-xs tracking-widest flex items-center gap-2 transition-all shadow-xl shadow-indigo-600/20 active:scale-95"
+                        className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white px-8 py-4 rounded-[1.5rem] font-black uppercase text-xs tracking-widest flex items-center gap-2 transition-all shadow-xl shadow-indigo-600/20 active:scale-95 border border-white/10"
                     >
                         <Plus className="w-5 h-5" /> Novo Item
                     </button>
 
                     <button
                         onClick={() => setIsAIImportOpen(true)}
-                        className="p-4 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 text-indigo-500 rounded-[1.5rem] shadow-sm hover:border-indigo-500/50 transition-all active:scale-95"
+                        className="p-4 bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl border border-white/20 dark:border-white/10 text-indigo-500 rounded-[1.5rem] shadow-sm hover:border-indigo-500/50 hover:bg-white/60 transition-all active:scale-95"
                         title="Importação Inteligente com AI"
                     >
                         <Sparkles className="w-6 h-6" />
@@ -331,7 +334,7 @@ export function StockManager({ user, userProfile, settings, isSalesMode }) {
 
                     <button
                         onClick={() => setIsXMLImportOpen(true)}
-                        className="p-4 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 text-purple-500 rounded-[1.5rem] shadow-sm hover:border-purple-500/50 transition-all active:scale-95"
+                        className="p-4 bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl border border-white/20 dark:border-white/10 text-purple-500 rounded-[1.5rem] shadow-sm hover:border-purple-500/50 hover:bg-white/60 transition-all active:scale-95"
                         title="Importar XML de Fornecedor"
                     >
                         <FileDown className="w-6 h-6" />
@@ -343,18 +346,18 @@ export function StockManager({ user, userProfile, settings, isSalesMode }) {
             <div className="flex flex-wrap gap-3 mb-10 overflow-x-auto no-scrollbar pb-2">
                 <button
                     onClick={handleStandardizeNames}
-                    className="flex items-center gap-2 px-6 py-3 bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 rounded-2xl text-[10px] font-black uppercase tracking-widest border border-slate-100 dark:border-slate-800 hover:border-indigo-500/30 transition-all"
+                    className="flex items-center gap-2 px-6 py-3 bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl text-slate-500 dark:text-slate-400 rounded-2xl text-[10px] font-black uppercase tracking-widest border border-white/20 dark:border-white/10 hover:border-indigo-500/30 hover:bg-white/60 transition-all shadow-sm"
                 >
                     <Wand2 className="w-4 h-4 text-indigo-500" /> Padronizar Nomes
                 </button>
                 <button
                     onClick={() => handlePrintLabels(filteredItems)}
-                    className="flex items-center gap-2 px-6 py-3 bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 rounded-2xl text-[10px] font-black uppercase tracking-widest border border-slate-100 dark:border-slate-800 hover:border-indigo-500/30 transition-all"
+                    className="flex items-center gap-2 px-6 py-3 bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl text-slate-500 dark:text-slate-400 rounded-2xl text-[10px] font-black uppercase tracking-widest border border-white/20 dark:border-white/10 hover:border-indigo-500/30 hover:bg-white/60 transition-all shadow-sm"
                 >
                     <Tag className="w-4 h-4 text-emerald-500" /> Etiquetas Térmicas
                 </button>
                 <button
-                    className="flex items-center gap-2 px-6 py-3 bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 rounded-2xl text-[10px] font-black uppercase tracking-widest border border-slate-100 dark:border-slate-800 hover:border-indigo-500/30 transition-all"
+                    className="flex items-center gap-2 px-6 py-3 bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl text-slate-500 dark:text-slate-400 rounded-2xl text-[10px] font-black uppercase tracking-widest border border-white/20 dark:border-white/10 hover:border-indigo-500/30 hover:bg-white/60 transition-all shadow-sm"
                 >
                     <FileDown className="w-4 h-4 text-blue-500" /> Exportar Planilha
                 </button>
@@ -450,7 +453,7 @@ export function StockManager({ user, userProfile, settings, isSalesMode }) {
                         await StockService.deleteItem(orgId, userId, unit.id, unit);
                         showToast("Unidade removida", "success");
                         loadData();
-                    } catch (e) {
+                    } catch {
                         showToast("Erro ao remover", "error");
                     }
                 }}

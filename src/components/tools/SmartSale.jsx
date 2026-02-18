@@ -327,37 +327,7 @@ export function SmartSale({ user, userProfile, settings }) {
         setIsLoading(false);
     };
 
-    const [diagnosticResults, setDiagnosticResults] = useState({ globalCount: 0, crossOrgCount: 0 });
 
-    const performDeepScan = async () => {
-        console.log("DEBUG: Deep Scan Initialized...");
-        const orgId = userProfile?.organizationId || user.uid;
-        const userId = user.uid;
-
-        try {
-            const { getDocs, query, collection, where } = await import('firebase/firestore');
-
-            // Scan for current Org
-            const qOrg = query(collection(db, 'sales'), where("organizationId", "==", orgId));
-            const snapOrg = await getDocs(qOrg);
-
-            // Scan for raw User ID (cross-check)
-            let snapUser = { size: 0 };
-            if (orgId !== userId) {
-                const qUser = query(collection(db, 'sales'), where("organizationId", "==", userId));
-                snapUser = await getDocs(qUser);
-            }
-
-            console.log("DEBUG: Deep Scan Completed", { orgCount: snapOrg.size, userCount: snapUser.size });
-            setDiagnosticResults({ globalCount: snapOrg.size, crossOrgCount: snapUser.size });
-
-            if (snapUser.size > 0 && snapOrg.size === 0) {
-                showToast(`Encontramos ${snapUser.size} vendas no seu ID pessoal. Elas podem estar ocultas devido ao ID da Loja.`, "warning");
-            }
-        } catch (e) {
-            console.error("DEBUG: Deep Scan Failed", e);
-        }
-    };
 
     const handleImportOrder = (order) => {
         console.log("DEBUG: Importing Order", order);
@@ -957,22 +927,24 @@ export function SmartSale({ user, userProfile, settings }) {
         }
     };
 
-    const SummaryContent = () => (
-        <div className="flex flex-col h-full">
+    // --- CHECKOUT SIDEBAR (SPLIT VIEW RIGHT PANEL) ---
+    const CheckoutSidebar = () => (
+        <div className="flex flex-col h-full relative">
+            {/* 1. Client Header (Compact) */}
             {selectedClient && (
-                <div className="bg-white dark:bg-slate-900/60 dark:bg-slate-900/40 backdrop-blur-xl p-5 rounded-[2rem] border border-slate-100 dark:border-white/5 mb-6 flex items-center gap-4 group transition-all hover:shadow-xl dark:shadow-slate-900/50 hover:shadow-indigo-500/5 hover:-translate-y-1">
-                    <div className="w-14 h-14 bg-gradient-to-br from-indigo-500 via-violet-600 to-purple-600 rounded-2xl flex items-center justify-center text-white font-black shadow-xl dark:shadow-slate-900/50 shadow-indigo-200 dark:shadow-none group-hover:rotate-6 transition-transform">
+                <div className="bg-white dark:bg-slate-900/40 p-4 rounded-[1.5rem] border border-slate-100 dark:border-white/5 mb-4 flex items-center gap-3 shadow-sm dark:shadow-slate-900/50 group/client hover:border-indigo-200 transition-all shrink-0">
+                    <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-xl flex items-center justify-center text-white font-black shadow-lg shadow-indigo-200 dark:shadow-none shrink-0 group-hover/client:scale-110 transition-transform">
                         {selectedClient.name[0]}
                     </div>
-                    <div className="min-w-0">
-                        <p className="font-extrabold text-slate-900 dark:text-white text-base leading-tight truncate">{selectedClient.name}</p>
-                        <div className="flex items-center gap-2 mt-1">
-                            <span className="text-[9px] font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 px-2 py-0.5 rounded-full uppercase tracking-widest border border-indigo-100 dark:border-indigo-500/20">
-                                {selectedClient.id === 'consumer_default' ? 'Venda Rápida' : 'Cliente Vip'}
+                    <div className="min-w-0 flex-1">
+                        <p className="font-extrabold text-slate-800 dark:text-white text-sm leading-tight truncate">{selectedClient.name}</p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-[9px] font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 px-1.5 py-0.5 rounded uppercase tracking-widest border border-indigo-100 dark:border-indigo-500/20">
+                                {selectedClient.id === 'consumer_default' ? 'Rápido' : 'VIP'}
                             </span>
                             {walletBalance > 0 && (
-                                <span className="text-[9px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full uppercase tracking-widest border border-emerald-100 italic">
-                                    Cashback: {formatCurrency(walletBalance)}
+                                <span className="text-[9px] font-black text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded uppercase tracking-widest border border-emerald-100 italic flex items-center gap-1">
+                                    <Wallet className="w-3 h-3" /> {formatCurrency(walletBalance)}
                                 </span>
                             )}
                         </div>
@@ -980,109 +952,197 @@ export function SmartSale({ user, userProfile, settings }) {
                 </div>
             )}
 
-            {/* NEW: Totals & Action Section - Moved Up for better accessibility */}
-            <div className="bg-slate-50 dark:bg-slate-950 dark:bg-slate-900/50 p-6 rounded-[2rem] border border-slate-100 dark:border-white/5 mb-6 space-y-6 shadow-sm dark:shadow-slate-900/50">
-                <div className="flex justify-between items-end">
-                    <div>
-                        <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Total Geral</p>
-                        <p className={cn("text-3xl font-black tracking-tighter", remainingBalance > 0.1 ? "text-slate-900 dark:text-white" : "text-emerald-500")}>
-                            {formatCurrency(remainingBalance)}
-                        </p>
+            {/* 2. Main Scroll Area: Cart & Payments */}
+            <div className="flex-1 overflow-y-auto custom-scrollbar px-1 space-y-6 pb-20">
+
+                {/* A. Totals Display */}
+                <div className="bg-slate-50 dark:bg-slate-950 p-5 rounded-[2rem] border border-slate-100 dark:border-white/5 relative overflow-hidden shadow-inner">
+                    <div className="flex justify-between items-end mb-2 relative z-10">
+                        <div>
+                            <p className="text-[9px] font-black uppercase text-slate-400 tracking-[0.2em] mb-1">Total a Pagar</p>
+                            <p className={cn("text-3xl font-black tracking-tighter transition-colors",
+                                remainingBalance <= 0.01 ? "text-emerald-500" : "text-slate-900 dark:text-white"
+                            )}>
+                                {formatCurrency(remainingBalance)}
+                            </p>
+                        </div>
                     </div>
+
+                    {/* Breakdown (Discount/Surcharge) */}
                     {(discount > 0 || surcharge > 0) && (
-                        <div className="text-right">
+                        <div className="flex gap-4 mt-2 pt-2 border-t border-slate-200 dark:border-white/10 relative z-10">
                             {discount > 0 && (
-                                <>
-                                    <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Original</p>
-                                    <p className="text-sm font-bold text-slate-400 line-through mb-1">{formatCurrency(cartTotal)}</p>
-                                    <p className="text-[10px] font-black uppercase text-red-400 tracking-widest mb-1">Desconto</p>
-                                    <p className="text-sm font-black text-red-500">-{formatCurrency(discount)}</p>
-                                </>
+                                <div>
+                                    <p className="text-[9px] font-black uppercase text-red-400 tracking-wider">Desconto</p>
+                                    <p className="text-xs font-black text-red-500">-{formatCurrency(discount)}</p>
+                                </div>
                             )}
                             {surcharge > 0 && (
-                                <>
-                                    <p className="text-[10px] font-black uppercase text-blue-400 tracking-widest mb-1">Acréscimo</p>
-                                    <p className="text-sm font-black text-blue-600">+{formatCurrency(surcharge)}</p>
-                                </>
+                                <div>
+                                    <p className="text-[9px] font-black uppercase text-blue-400 tracking-wider">Juros</p>
+                                    <p className="text-xs font-black text-blue-600">+{formatCurrency(surcharge)}</p>
+                                </div>
                             )}
+                            <div className="ml-auto text-right">
+                                <p className="text-[9px] font-black uppercase text-slate-400 tracking-wider">Subtotal</p>
+                                <p className="text-xs font-bold text-slate-500 line-through">{formatCurrency(cartTotal)}</p>
+                            </div>
                         </div>
                     )}
                 </div>
 
-                {step === 2 ? (
-                    <button
-                        onClick={() => {
-                            setStep(3);
-                            setShowMobileSummary(false);
-                        }}
-                        disabled={cart.length === 0}
-                        className="w-full py-5 bg-gradient-to-r from-blue-600 to-indigo-700 text-white rounded-2xl font-black uppercase tracking-[0.2em] text-xs hover:from-blue-700 hover:to-indigo-800 transition-all shadow-xl dark:shadow-slate-900/50 shadow-blue-200 disabled:opacity-50 disabled:grayscale active:scale-95 flex items-center justify-center gap-3"
-                    >
-                        <CreditCard className="w-5 h-5" />
-                        Pagar Agora
-                    </button>
-                ) : (
-                    <button
-                        id="finalize-sale-btn"
-                        onClick={() => {
-                            handleFinishSale();
-                            setShowMobileSummary(false);
-                        }}
-                        disabled={remainingBalance > 1 || isProcessingSale}
-                        className={cn("w-full py-5 rounded-2xl font-black uppercase tracking-[0.2em] text-xs transition-all shadow-xl active:scale-95 flex items-center justify-center gap-3",
-                            remainingBalance <= 1 ? "bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-emerald-200" : "bg-slate-200 text-slate-400 cursor-not-allowed"
-                        )}
-                    >
-                        {isProcessingSale ? <Loader2 className="animate-spin" /> : <><Check className="w-5 h-5" /> Finalizar Venda</>}
-                    </button>
-                )}
-            </div>
-
-            <div className="flex-1 overflow-y-auto space-y-3 pb-6 custom-scrollbar">
-                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4 flex items-center gap-2 px-1">
-                    <ShoppingCart className="w-4 h-4" /> Itens no Carrinho ({cart.length})
-                </h4>
-                {cart.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-40 text-slate-300 bg-slate-50 dark:bg-slate-950/50 rounded-3xl border-2 border-dashed border-slate-100">
-                        <ShoppingCart className="w-10 h-10 mb-2 opacity-20" />
-                        <p className="text-[10px] font-black uppercase tracking-widest">Aguardando Produtos</p>
+                {/* B. Payment Methods Grid - Simplified for Sidebar */}
+                {cart.length > 0 && remainingBalance > 0.01 && (
+                    <div className="grid grid-cols-2 gap-2 animate-in slide-in-from-bottom-2 fade-in">
+                        {[
+                            { id: 'pix', label: 'Dinheiro/Pix', icon: Banknote, color: 'emerald', action: () => setPaymentEntries(prev => [...prev, { id: Date.now(), method: 'pix', amount: remainingBalance }]) },
+                            { id: 'credit', label: 'Cartão', icon: CreditCard, color: 'indigo', action: () => setPaymentEntries(prev => [...prev, { id: Date.now(), method: 'credit', amount: remainingBalance, originalAmount: remainingBalance, installments: 1, passFees: true }]) },
+                            { id: 'trade-in', label: 'Trade-In', icon: Smartphone, color: 'blue', action: () => { setLabEntryData({ ...labEntryData, value: remainingBalance }); setShowLabModal(true); } },
+                            { id: 'fiado', label: 'Prazo', icon: History, color: 'amber', action: () => setPaymentEntries(prev => [...prev, { id: Date.now(), method: 'fiado', amount: remainingBalance, dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] }]) },
+                        ].map((btn) => (
+                            <button
+                                key={btn.id}
+                                onClick={btn.action}
+                                className={cn(
+                                    "flex flex-col items-center justify-center p-3 rounded-xl border transition-all active:scale-95 hover:shadow-lg",
+                                    btn.id === 'pix' ? "bg-emerald-50 border-emerald-100 hover:bg-emerald-100/50 text-emerald-700" :
+                                        btn.id === 'credit' ? "bg-indigo-50 border-indigo-100 hover:bg-indigo-100/50 text-indigo-700" :
+                                            btn.id === 'trade-in' ? "bg-blue-50 border-blue-100 hover:bg-blue-100/50 text-blue-700" :
+                                                "bg-amber-50 border-amber-100 hover:bg-amber-100/50 text-amber-700"
+                                )}
+                            >
+                                <btn.icon className="w-5 h-5 mb-1" />
+                                <span className="text-[9px] font-black uppercase tracking-wider">{btn.label}</span>
+                            </button>
+                        ))}
+                        <button
+                            onClick={() => { const val = prompt('Valor do desconto:'); if (val) setDiscount(prev => prev + parseFloat(val)); }}
+                            className="col-span-2 flex items-center justify-center gap-2 p-2 rounded-xl bg-red-50 border border-red-100 text-red-600 hover:bg-red-100 transition-colors uppercase text-[10px] font-black tracking-widest"
+                        >
+                            <TicketPercent className="w-4 h-4" /> Adicionar Desconto
+                        </button>
                     </div>
-                ) : (
-                    cart.map(item => (
-                        <div key={item.id} className="flex gap-4 items-start group p-4 hover:bg-slate-50 dark:hover:bg-white/5 dark:bg-slate-950 rounded-2xl transition-all border border-transparent hover:border-slate-200 dark:border-white/10">
-                            <div className="w-14 h-14 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform shadow-sm dark:shadow-slate-900/50">
-                                {item.imageUrl ? <img src={item.imageUrl} className="w-10 h-10 object-contain mix-blend-multiply" /> : <Smartphone className="w-6 h-6 text-slate-300" />}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <p className="font-black text-slate-800 dark:text-slate-100 text-sm leading-tight mb-1 truncate">{item.name}</p>
+                )}
+
+                {/* C. Payment Entries List */}
+                {paymentEntries.length > 0 && (
+                    <div className="space-y-2 animate-in slide-in-from-bottom-2 fade-in">
+                        <div className="flex items-center gap-2 px-1">
+                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Recebimentos ({paymentEntries.length})</span>
+                            <div className="h-px flex-1 bg-slate-100 dark:bg-white/10" />
+                        </div>
+                        {paymentEntries.map((entry, idx) => (
+                            <div key={entry.id} className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/10 p-3 rounded-xl shadow-sm flex flex-col gap-2 group relative overflow-hidden">
+                                <div className="absolute left-0 top-0 bottom-0 w-1 bg-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity" />
                                 <div className="flex justify-between items-center">
                                     <div className="flex items-center gap-2">
-                                        <span className="text-[10px] font-black text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded-md">{item.quantity}x</span>
-                                        <button
-                                            onClick={() => {
-                                                const newPrice = prompt('Novo Preço Unitário:', item.sellingPrice);
-                                                if (newPrice !== null && newPrice !== "" && !isNaN(parseFloat(newPrice))) {
-                                                    setCart(prev => prev.map(p => p.id === item.id ? { ...p, sellingPrice: parseFloat(newPrice) } : p));
-                                                }
-                                            }}
-                                            className="group/price flex items-center gap-1.5 px-2 py-0.5 bg-slate-50 dark:bg-slate-950 hover:bg-indigo-600 rounded-md transition-all border border-slate-100"
-                                            title="Clique para alterar o preço"
-                                        >
-                                            <span className="text-slate-600 dark:text-slate-300 text-[10px] font-bold group-hover/price:text-white transition-colors">{formatCurrency(item.sellingPrice)}</span>
-                                            <Pencil className="w-2.5 h-2.5 text-slate-400 group-hover/price:text-white transition-colors" />
-                                        </button>
+                                        <div className={cn("p-1.5 rounded-lg",
+                                            entry.method === 'pix' ? "bg-emerald-100 text-emerald-600" :
+                                                entry.method === 'credit' ? "bg-indigo-100 text-indigo-600" :
+                                                    entry.method === 'trade-in' ? "bg-blue-100 text-blue-600" : "bg-amber-100 text-amber-600"
+                                        )}>
+                                            {entry.method === 'pix' ? <Banknote className="w-3.5 h-3.5" /> :
+                                                entry.method === 'credit' ? <CreditCard className="w-3.5 h-3.5" /> :
+                                                    entry.method === 'trade-in' ? <Smartphone className="w-3.5 h-3.5" /> : <History className="w-3.5 h-3.5" />}
+                                        </div>
+                                        <div className="flex flex-col">
+                                            <span className="text-[10px] font-black uppercase text-slate-800 dark:text-slate-200">{entry.method === 'pix' ? 'Dinheiro/Pix' : entry.method === 'credit' ? 'Cartão' : entry.method === 'fiado' ? 'Prazo' : 'Trade-In'}</span>
+                                            {entry.method === 'credit' && (
+                                                <select
+                                                    className="text-[9px] bg-slate-50 dark:bg-slate-800 border-none outline-none rounded p-0 text-slate-500 cursor-pointer w-auto mt-0.5"
+                                                    value={entry.installments || 1}
+                                                    onChange={(e) => {
+                                                        const newEntries = [...paymentEntries];
+                                                        newEntries[idx].installments = parseInt(e.target.value);
+                                                        // Simplified Installment Logic for Sidebar (Basic Recalc)
+                                                        setPaymentEntries(newEntries);
+                                                    }}
+                                                >
+                                                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(i => <option key={i} value={i}>{i}x</option>)}
+                                                </select>
+                                            )}
+                                        </div>
                                     </div>
-                                    <p className="font-black text-slate-900 dark:text-white text-sm">{formatCurrency(item.sellingPrice * item.quantity)}</p>
+                                    <input
+                                        type="number"
+                                        className="w-20 text-right bg-transparent font-black text-sm outline-none border-b border-transparent hover:border-slate-300 focus:border-indigo-500 transition-all text-slate-900 dark:text-white"
+                                        value={entry.amount}
+                                        onChange={(e) => {
+                                            const newEntries = [...paymentEntries];
+                                            newEntries[idx].amount = parseFloat(e.target.value) || 0;
+                                            setPaymentEntries(newEntries);
+                                        }}
+                                    />
+                                    <button onClick={() => setPaymentEntries(prev => prev.filter(p => p.id !== entry.id))} className="text-slate-300 hover:text-red-500 hover:bg-red-50 p-1 rounded transition-colors ml-1">
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
                                 </div>
                             </div>
-                            <button onClick={() => removeFromCart(item.id)} className="text-slate-300 hover:text-red-500 transition-all p-1.5 rounded-lg hover:bg-red-50 opacity-0 group-hover:opacity-100">
-                                <X className="w-4 h-4" />
-                            </button>
-                        </div>
-                    ))
+                        ))}
+                    </div>
                 )}
+
+                {/* D. Cart Items List */}
+                <div className="space-y-3 pt-2">
+                    <div className="flex items-center gap-2 px-1">
+                        <ShoppingCart className="w-3 h-3 text-slate-400" />
+                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Carrinho ({cart.length})</span>
+                    </div>
+
+                    {cart.length === 0 ? (
+                        <div className="py-10 text-center border-2 border-dashed border-slate-100 rounded-2xl">
+                            <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Vazio</p>
+                        </div>
+                    ) : (
+                        cart.map(item => (
+                            <div key={item.id} className="flex gap-3 items-start group relative p-2 hover:bg-slate-50 dark:hover:bg-white/5 rounded-xl transition-colors">
+                                <div className="w-10 h-10 bg-white dark:bg-slate-900 rounded-lg border border-slate-100 flex items-center justify-center shrink-0">
+                                    {item.imageUrl ? <img src={item.imageUrl} className="w-full h-full object-contain p-1" /> : <Smartphone className="w-4 h-4 text-slate-300" />}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="font-bold text-slate-800 dark:text-white text-xs leading-tight mb-1 truncate">{item.name}</p>
+                                    <div className="flex justify-between items-center">
+                                        <div className="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-[10px] font-bold text-slate-500">{item.quantity}x</div>
+                                        <p className="font-bold text-slate-900 dark:text-white text-xs">{formatCurrency(item.sellingPrice * item.quantity)}</p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => removeFromCart(item.id)}
+                                    className="absolute top-1 right-1 p-1 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity bg-white dark:bg-slate-900 shadow-sm rounded-md"
+                                >
+                                    <X className="w-3 h-3" />
+                                </button>
+                            </div>
+                        ))
+                    )}
+                </div>
+
+                <div className="h-20" /> {/* Spacer */}
             </div>
-            {/* Client Form Modal */}
+
+            {/* 3. Sticky Footer Actions */}
+            <div className="absolute bottom-0 left-0 right-0 p-4 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-t border-slate-100 dark:border-white/5 z-20 rounded-b-[2rem]">
+                <button
+                    id="finalize-sale-btn"
+                    onClick={handleFinishSale}
+                    disabled={remainingBalance > 1 || isProcessingSale || cart.length === 0}
+                    className={cn(
+                        "w-full py-4 rounded-xl font-black uppercase tracking-[0.2em] text-[10px] shadow-xl hover:shadow-2xl transition-all active:scale-95 flex items-center justify-center gap-2 group relative overflow-hidden",
+                        remainingBalance <= 1 && cart.length > 0
+                            ? "bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-emerald-200 dark:shadow-emerald-900/20"
+                            : "bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200"
+                    )}
+                >
+                    {isProcessingSale ? <Loader2 className="w-4 h-4 animate-spin" /> : (
+                        <>
+                            <span>{remainingBalance <= 1 ? 'Finalizar Venda' : (cart.length === 0 ? 'Adicione Produtos' : 'Complete o Pgto')}</span>
+                            {remainingBalance <= 1 && <ArrowUpRight className="w-4 h-4 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />}
+                        </>
+                    )}
+                </button>
+            </div>
+
+            {/* Client Form Modal (Kept for creating clients) */}
             <ClientFormModal
                 open={isCreatingClient}
                 onClose={() => setIsCreatingClient(false)}
@@ -1468,8 +1528,8 @@ export function SmartSale({ user, userProfile, settings }) {
                                 </div>
                             )}
 
-                            {/* STEP 2: PRODUCTS */}
-                            {step === 2 && (
+                            {/* STEP 2 & 3: PRODUCTS & CHECKOUT (SPLIT VIEW) */}
+                            {step >= 2 && (
                                 <div className="space-y-6 animate-in slide-in-from-right duration-300">
                                     <div className="flex flex-col gap-6">
                                         <div className="flex justify-between items-start">
@@ -1704,584 +1764,51 @@ export function SmartSale({ user, userProfile, settings }) {
                                 </div>
                             )}
 
-                            {/* STEP 3: PAYMENT OVERHAUL - PREMIUM REDESIGN */}
-                            {step === 3 && (
-                                <div className="space-y-12 animate-in slide-in-from-bottom-12 duration-700">
-                                    <div className="flex flex-col md:flex-row items-center justify-between gap-8 mb-16">
-                                        <div className="text-center md:text-left">
-                                            <h3 className="text-5xl font-black text-slate-950 tracking-tighter uppercase italic flex flex-col md:flex-row items-baseline gap-4">
-                                                Finalizar Venda
-                                                <span className="px-4 py-1.5 bg-emerald-500 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.3em] not-italic shadow-lg dark:shadow-slate-900/50 shadow-emerald-200 animate-pulse">
-                                                    Check-out Seguro
-                                                </span>
-                                            </h3>
-                                            <p className="text-slate-400 font-bold text-lg mt-3">Configure as condições e as formas de recebimento com precisão.</p>
-                                        </div>
-
-                                        <div className="relative group perspective-1000">
-                                            <div className="bg-slate-900 text-white p-10 rounded-[3rem] shadow-[0_50px_100px_-20px_rgba(0,0,0,0.3)] flex flex-col items-end relative overflow-hidden group min-w-[340px] transform group-hover:rotate-x-12 transition-all duration-700">
-                                                <div className="absolute top-0 right-0 w-48 h-48 bg-indigo-600 rounded-full blur-[80px] opacity-30 -mr-24 -mt-24 group-hover:opacity-60 transition-opacity" />
-                                                <div className="absolute bottom-0 left-0 w-32 h-32 bg-emerald-500 rounded-full blur-[60px] opacity-10 -ml-16 -mb-16" />
-                                                <p className="text-[11px] font-black uppercase tracking-[0.5em] text-slate-500 mb-2 relative z-10 italic">Saldo devedor total</p>
-                                                <p className="text-6xl font-black tracking-tighter text-white relative z-10 drop-shadow-2xl dark:shadow-slate-900/50">
-                                                    {formatCurrency(remainingBalance)}
-                                                </p>
-                                                <div className="mt-4 flex items-center gap-2 relative z-10 opacity-50">
-                                                    <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                                                    <span className="text-[10px] font-black uppercase tracking-widest">Aguardando Liquidação</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Command Center: Smart Negotiation */}
-                                    <div className="relative mb-6">
-                                        <div className="flex items-center gap-4 mb-6">
-                                            <div className="h-[2px] flex-1 bg-gradient-to-r from-transparent via-slate-200 to-slate-200" />
-                                            <span className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.4em] text-slate-500 whitespace-nowrap bg-white dark:bg-slate-900 px-6 py-1 rounded-full border border-slate-100 shadow-sm dark:shadow-slate-900/50">
-                                                <Zap className="w-3 h-3 text-amber-500 fill-amber-500 animate-pulse" /> Painel de Controle
-                                            </span>
-                                            <div className="h-[2px] flex-1 bg-gradient-to-l from-transparent via-slate-200 to-slate-200" />
-                                        </div>
-
-                                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                                            {/* Subtotal Card */}
-                                            <div className="p-4 bg-white dark:bg-slate-900 border border-slate-100 rounded-[1.5rem] shadow-xl dark:shadow-slate-900/50 shadow-slate-200/40 hover:shadow-2xl hover:shadow-slate-200 transition-all group overflow-hidden relative border-b-4 border-b-slate-200">
-                                                <div className="absolute top-0 right-0 w-16 h-16 bg-slate-50 dark:bg-slate-950 rounded-full -mr-8 -mt-8 group-hover:scale-125 transition-transform duration-500" />
-                                                <div className="w-10 h-10 bg-slate-50 dark:bg-slate-950 rounded-xl flex items-center justify-center mb-3 group-hover:bg-slate-900 group-hover:text-white transition-all shadow-inner relative z-10">
-                                                    <Calculator className="w-5 h-5 text-slate-400 group-hover:text-white" />
-                                                </div>
-                                                <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1 relative z-10">Total Bruto</p>
-                                                <p className="text-xl font-black text-slate-900 dark:text-white leading-none relative z-10">{formatCurrency(cartTotal)}</p>
-                                            </div>
-
-                                            {/* Final Value / Target Card */}
-                                            <div className="p-4 bg-gradient-to-br from-indigo-600 to-violet-700 border border-indigo-500 rounded-[1.5rem] shadow-2xl dark:shadow-slate-900/50 shadow-indigo-200 hover:scale-105 transition-all group relative overflow-hidden ring-4 ring-indigo-500/10">
-                                                <div className="absolute top-0 right-0 w-16 h-16 bg-white dark:bg-slate-900/10 rounded-full -mr-8 -mt-8 group-hover:scale-125 transition-transform duration-500" />
-                                                <div className="w-10 h-10 bg-white/20 text-white rounded-xl flex items-center justify-center mb-3 group-hover:bg-white dark:bg-slate-900 group-hover:text-indigo-600 transition-all shadow-lg dark:shadow-slate-900/50 backdrop-blur-md relative z-10">
-                                                    <Target className="w-5 h-5" />
-                                                </div>
-                                                <p className="text-[9px] font-black uppercase tracking-widest text-indigo-100/70 mb-1 relative z-10">Valor de Acerto</p>
-                                                <div className="relative z-10">
-                                                    <span className="absolute left-0 top-1/2 -translate-y-1/2 text-sm font-black text-indigo-300">R$</span>
-                                                    <input
-                                                        type="number"
-                                                        className="w-full bg-transparent pl-6 font-black text-2xl text-white outline-none placeholder-indigo-300/50"
-                                                        value={isEditingTotal ? customTotal : (cartTotal - discount)}
-                                                        onFocus={() => {
-                                                            setIsEditingTotal(true);
-                                                            setCustomTotal(cartTotal - discount);
-                                                        }}
-                                                        onBlur={() => {
-                                                            setIsEditingTotal(false);
-                                                        }}
-                                                        onChange={(e) => {
-                                                            setCustomTotal(e.target.value);
-                                                            const val = parseFloat(e.target.value);
-                                                            if (!isNaN(val) && val >= 0) {
-                                                                setDiscount(Math.max(0, cartTotal - val));
-                                                            }
-                                                        }}
-                                                    />
-                                                </div>
-                                                <div className="absolute bottom-3 left-4 flex items-center gap-1.5 opacity-60">
-                                                    <div className="w-1 h-1 rounded-full bg-white dark:bg-slate-900 animate-pulse" />
-                                                    <p className="text-[8px] text-white font-bold uppercase tracking-tighter">Ajuste Dinâmico</p>
-                                                </div>
-                                            </div>
-
-                                            {/* Trade-In Card */}
-                                            <div className="p-4 bg-white dark:bg-slate-900 border border-slate-100 rounded-[1.5rem] shadow-xl dark:shadow-slate-900/50 shadow-slate-200/40 hover:shadow-2xl transition-all group relative overflow-hidden border-b-4 border-b-blue-200">
-                                                <div className="absolute top-0 right-0 w-16 h-16 bg-blue-50 rounded-full -mr-8 -mt-8 group-hover:scale-125 transition-transform duration-500" />
-                                                <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center mb-3 group-hover:bg-blue-600 group-hover:text-white transition-all shadow-inner relative z-10">
-                                                    <Smartphone className="w-5 h-5" />
-                                                </div>
-                                                <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1 relative z-10">Entrada / Troca</p>
-                                                <p className="text-xl font-black text-blue-700 leading-none relative z-10">
-                                                    {formatCurrency(paymentEntries.filter(p => p.method === 'trade_in').reduce((a, b) => a + b.amount, 0))}
-                                                </p>
-                                            </div>
-
-                                            {/* Discount Applied Card */}
-                                            <div className={cn("p-4 border rounded-[1.5rem] shadow-xl transition-all group relative overflow-hidden border-b-4",
-                                                discount > 0 ? "bg-white border-emerald-100 border-b-emerald-500" : "bg-white border-slate-100 border-b-slate-200"
-                                            )}>
-                                                <div className={cn("absolute top-0 right-0 w-16 h-16 rounded-full -mr-8 -mt-8 group-hover:scale-125 transition-transform duration-500 opacity-40",
-                                                    discount > 0 ? "bg-emerald-50" : "bg-slate-50"
-                                                )} />
-                                                <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center mb-3 transition-all shadow-inner relative z-10",
-                                                    discount > 0 ? "bg-emerald-50 text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white" : "bg-slate-50 text-slate-300"
-                                                )}>
-                                                    <TicketPercent className="w-5 h-5 text-emerald-500" />
-                                                </div>
-                                                <p className={cn("text-[9px] font-black uppercase tracking-widest mb-1 relative z-10",
-                                                    discount > 0 ? "text-emerald-500" : "text-slate-400"
-                                                )}>Desconto Ofertado</p>
-                                                <p className={cn("text-xl font-black leading-none relative z-10",
-                                                    discount > 0 ? "text-emerald-700" : "text-slate-900"
-                                                )}>
-                                                    {discount > 0 ? `-${formatCurrency(discount)}` : formatCurrency(0)}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Admin: Select Seller */}
-                                    {(userProfile?.role === 'owner' || userProfile?.role === 'admin') && teamMembers.length > 0 && (
-                                        <div className="bg-white dark:bg-slate-900 p-6 rounded-[2rem] border border-slate-100 mb-10 flex flex-col md:flex-row items-center justify-between gap-6 hover:border-indigo-200 transition-all group overflow-hidden relative">
-                                            <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50 rounded-full -mr-16 -mt-16 group-hover:scale-125 transition-transform opacity-30" />
-                                            <div className="flex items-center gap-4 relative z-10 w-full md:w-auto">
-                                                <div className="w-14 h-14 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-lg dark:shadow-slate-900/50 shadow-indigo-200 group-hover:scale-110 transition-transform">
-                                                    <User className="w-6 h-6" />
-                                                </div>
-                                                <div>
-                                                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-0.5">Responsável pela Venda</p>
-                                                    <p className="font-black text-slate-900 dark:text-white text-lg">
-                                                        {teamMembers.find(m => m.id === selectedSellerId)?.name || 'Eu Mesmo'}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                            <div className="w-full md:w-auto relative z-10">
-                                                <select
-                                                    value={selectedSellerId}
-                                                    onChange={e => setSelectedSellerId(e.target.value)}
-                                                    className="w-full md:w-64 p-4 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-2xl text-xs font-black uppercase tracking-widest outline-none text-slate-600 dark:text-slate-300 cursor-pointer focus:border-indigo-400 focus:bg-white dark:bg-slate-900 focus:ring-4 focus:ring-indigo-100 transition-all appearance-none text-center"
-                                                >
-                                                    <option value={user.uid}>{userProfile?.name} (VOCÊ)</option>
-                                                    {teamMembers.filter(m => m.id !== user.uid).map(m => (
-                                                        <option key={m.id} value={m.id}>{m.name.toUpperCase()}</option>
-                                                    ))}
-                                                </select>
-                                                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-                                                    <ChevronDown className="w-4 h-4" />
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {settings?.costCenters?.length > 0 && (
-                                        <div className="bg-slate-50 dark:bg-slate-950 p-4 rounded-2xl border border-slate-100 mb-8 flex items-center justify-between">
-                                            <div className="flex items-center gap-3">
-                                                <div className="p-2 bg-white dark:bg-slate-900 text-indigo-600 rounded-lg shadow-sm dark:shadow-slate-900/50">
-                                                    <Building2 className="w-5 h-5" />
-                                                </div>
-                                                <div>
-                                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Unidade / Centro de Custo</p>
-                                                    <p className="font-bold text-slate-800 dark:text-slate-100 text-sm">
-                                                        {settings.costCenters.find(cc => cc.id === selectedCostCenterId)?.name || 'Padrão'}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                            <select
-                                                value={selectedCostCenterId || ''}
-                                                onChange={e => setSelectedCostCenterId(e.target.value)}
-                                                className="p-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-lg text-xs font-bold outline-none text-slate-600 dark:text-slate-300 cursor-pointer hover:border-indigo-300 transition-colors"
-                                            >
-                                                <option value="">Nenhum</option>
-                                                {settings.costCenters.filter(cc => cc.active).map(cc => (
-                                                    <option key={cc.id} value={cc.id}>{cc.name}</option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                    )}
-
-                                    {/* Command Center: Payment Methods Selection */}
-                                    <div className="space-y-4 bg-slate-50 dark:bg-slate-950/50 p-5 rounded-[2.5rem] border border-slate-100 shadow-inner">
-                                        <div className="flex items-center gap-4">
-                                            <div className="w-1.5 h-6 bg-indigo-600 rounded-full" />
-                                            <span className="text-[11px] font-black text-slate-800 dark:text-slate-100 uppercase tracking-[0.2em] whitespace-nowrap">Acionar Forma de Recebimento</span>
-                                            <div className="h-px flex-1 bg-slate-200" />
-                                        </div>
-
-                                        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-                                            {[
-                                                { id: 'pix', label: 'Dinheiro / Pix', sub: 'À VISTA', icon: Banknote, color: 'emerald', action: () => setPaymentEntries(prev => [...prev, { id: Date.now(), method: 'pix', amount: remainingBalance }]) },
-                                                { id: 'credit', label: 'Cartão', sub: 'ATÉ 18X', icon: CreditCard, color: 'indigo', action: () => setPaymentEntries(prev => [...prev, { id: Date.now(), method: 'credit', amount: remainingBalance, originalAmount: remainingBalance, installments: 1, passFees: true }]) },
-                                                { id: 'trade-in', label: 'Trade-In', sub: 'TROCA', icon: Smartphone, color: 'blue', action: () => { setLabEntryData({ ...labEntryData, value: remainingBalance }); setShowLabModal(true); } },
-                                                { id: 'fiado', label: 'Caderneta', sub: 'À PRAZO', icon: History, color: 'amber', action: () => setPaymentEntries(prev => [...prev, { id: Date.now(), method: 'fiado', amount: remainingBalance, dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] }]) },
-                                                { id: 'discount', label: 'Desconto', sub: 'MANUAL', icon: TicketPercent, color: 'red', action: () => { const val = prompt('Valor do desconto:'); if (val) setDiscount(prev => prev + parseFloat(val)); } }
-                                            ].map((btn) => (
-                                                <button
-                                                    key={btn.id}
-                                                    onClick={() => { if (remainingBalance <= 0 && btn.id !== 'discount') return; btn.action(); }}
-                                                    className={cn(
-                                                        "group relative p-4 rounded-[1.5rem] bg-white border border-slate-100 shadow-xl shadow-slate-200/40 transition-all hover:-translate-y-1 hover:shadow-2xl overflow-hidden text-left",
-                                                        btn.id === 'pix' ? "hover:border-emerald-500" :
-                                                            btn.id === 'credit' ? "hover:border-indigo-500" :
-                                                                btn.id === 'trade-in' ? "hover:border-blue-500" :
-                                                                    btn.id === 'fiado' ? "hover:border-amber-500" : "hover:border-red-500"
-                                                    )}
-                                                >
-                                                    <div className={cn("absolute top-0 right-0 w-16 h-16 rounded-full blur-3xl -mr-8 -mt-8 transition-all opacity-0 group-hover:opacity-30 group-hover:scale-150",
-                                                        `bg-${btn.color}-400`
-                                                    )} />
-                                                    <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center mb-3 transition-all shadow-inner relative z-10",
-                                                        btn.id === 'pix' ? "bg-emerald-50 text-emerald-500 group-hover:bg-emerald-500 group-hover:text-white" :
-                                                            btn.id === 'credit' ? "bg-indigo-50 text-indigo-500 group-hover:bg-indigo-500 group-hover:text-white" :
-                                                                btn.id === 'trade-in' ? "bg-blue-50 text-blue-500 group-hover:bg-blue-500 group-hover:text-white" :
-                                                                    btn.id === 'fiado' ? "bg-amber-50 text-amber-500 group-hover:bg-amber-500 group-hover:text-white" : "bg-red-50 text-red-500 group-hover:bg-red-500 group-hover:text-white"
-                                                    )}>
-                                                        <btn.icon className="w-5 h-5" />
-                                                    </div>
-                                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-800 dark:text-slate-100 block relative z-10">{btn.label}</span>
-                                                    <span className={cn("text-[9px] font-bold px-2 py-0.5 rounded-full mt-2 inline-block relative z-10 border",
-                                                        btn.id === 'pix' ? "bg-emerald-50 text-emerald-600 border-emerald-100 group-hover:bg-white" :
-                                                            btn.id === 'credit' ? "bg-indigo-50 text-indigo-600 border-indigo-100 group-hover:bg-white" :
-                                                                btn.id === 'trade-in' ? "bg-blue-50 text-blue-600 border-blue-100 group-hover:bg-white" :
-                                                                    btn.id === 'fiado' ? "bg-amber-50 text-amber-600 border-amber-100 group-hover:bg-white" : "bg-red-50 text-red-600 border-red-100 group-hover:bg-white"
-                                                    )}>{btn.sub}</span>
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-
-                                    {/* Command Center: Timeline of Payments */}
-                                    <div className="space-y-2">
-                                        {paymentEntries.length > 0 && (
-                                            <div className="flex items-center gap-2 px-2 pb-2">
-                                                <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-ping" />
-                                                <span className="text-[9px] font-black text-slate-800 dark:text-slate-100 uppercase tracking-[0.4em] whitespace-nowrap">Recebimentos</span>
-                                                <div className="h-px flex-1 bg-gradient-to-r from-slate-200 to-transparent" />
-                                            </div>
-                                        )}
-                                        {paymentEntries.map((entry, idx) => (
-                                            <div key={entry.id} className="bg-white dark:bg-slate-900 border border-slate-100 p-2 pl-3 rounded-2xl flex flex-col lg:flex-row items-center gap-3 shadow-md dark:shadow-slate-900/50 hover:shadow-lg transition-all relative overflow-hidden group">
-                                                <div className="hidden lg:block absolute left-0 top-0 bottom-0 w-1 bg-indigo-500/50" />
-
-                                                {/* Icon & Method Label */}
-                                                <div className="flex items-center gap-4 w-full lg:w-48 shrink-0">
-                                                    <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-lg transition-transform group-hover:scale-110",
-                                                        entry.method === 'pix' ? "bg-emerald-500 text-white" :
-                                                            entry.method === 'credit' ? "bg-indigo-600 text-white" :
-                                                                entry.method === 'fiado' ? "bg-amber-500 text-white" : "bg-blue-600 text-white"
-                                                    )}>
-                                                        {entry.method === 'pix' ? <Banknote className="w-6 h-6" /> :
-                                                            entry.method === 'credit' ? <CreditCard className="w-6 h-6" /> :
-                                                                entry.method === 'fiado' ? <History className="w-6 h-6" /> : <Smartphone className="w-6 h-6" />}
-                                                    </div>
-                                                    <div className="flex flex-col">
-                                                        <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest leading-none mb-1">Método</span>
-                                                        <span className="text-sm font-black text-slate-900 dark:text-white uppercase italic">
-                                                            {entry.method === 'pix' ? 'Pix / Cash' :
-                                                                entry.method === 'credit' ? 'Crédito' :
-                                                                    entry.method === 'fiado' ? 'Prazo' : 'Trade-In'}
-                                                        </span>
-                                                    </div>
-                                                </div>
-
-                                                {/* Value Input */}
-                                                <div className="relative group/input flex-1 w-full lg:max-w-[180px]">
-                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-black text-slate-400">R$</span>
-                                                    <input
-                                                        type="number"
-                                                        className="w-full pl-8 pr-3 py-1.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/10 hover:border-indigo-300 focus:border-indigo-500 focus:bg-white dark:bg-slate-900 rounded-xl font-black text-lg text-slate-700 dark:text-slate-200 outline-none transition-all"
-                                                        value={entry.amount}
-                                                        onChange={(e) => {
-                                                            const newEntries = [...paymentEntries];
-                                                            newEntries[idx].amount = parseFloat(e.target.value) || 0;
-                                                            newEntries[idx].originalAmount = parseFloat(e.target.value) || 0;
-                                                            setPaymentEntries(newEntries);
-                                                        }}
-                                                    />
-                                                </div>
-
-                                                {/* Credit Config (Inline) */}
-                                                {entry.method === 'credit' && (
-                                                    <div className="flex items-center gap-2 flex-wrap flex-1 w-full justify-end">
-                                                        {/* Installments */}
-                                                        <div className="relative min-w-[100px]">
-                                                            <select
-                                                                className="w-full text-[11px] font-bold bg-indigo-50 text-indigo-700 outline-none cursor-pointer border border-indigo-100 rounded-lg py-1.5 pl-2 pr-6 appearance-none hover:bg-indigo-100 transition-all"
-                                                                value={entry.installments}
-                                                                onChange={(e) => {
-                                                                    const newEntries = [...paymentEntries];
-                                                                    const newInstallments = parseInt(e.target.value);
-                                                                    const passFees = newEntries[idx].passFees !== false;
-                                                                    newEntries[idx].installments = newInstallments;
-                                                                    const baseAmount = newEntries[idx].originalAmount || newEntries[idx].amount;
-
-                                                                    if (!passFees) {
-                                                                        newEntries[idx].amount = baseAmount;
-                                                                    } else {
-                                                                        let maxRate = 0;
-                                                                        const itemsToCheck = cart.length > 0 ? cart : [{ category: 'General' }];
-                                                                        itemsToCheck.forEach(item => {
-                                                                            const category = settings?.categories?.find(c => c.name?.toLowerCase() === (item.category || '').toLowerCase());
-                                                                            const gateways = Array.isArray(settings?.financial?.gateways) ? settings.financial.gateways : [];
-                                                                            const gateway = gateways.find(g => g.id === category?.gatewayId) || gateways.find(g => g.type === 'credit' || g.type === 'card' || g.brands) || gateways[0];
-                                                                            if (gateway && gateway.rates) {
-                                                                                let rate = 0;
-                                                                                const inst = newInstallments || 1;
-                                                                                if (Array.isArray(gateway.rates)) {
-                                                                                    const rateObj = gateway.rates.find(r => parseInt(r.installments) === inst);
-                                                                                    rate = rateObj ? Number(rateObj.rate) : 0;
-                                                                                } else {
-                                                                                    rate = Number(gateway.rates[`credit${inst}x`] || 0);
-                                                                                }
-                                                                                if (rate > maxRate) maxRate = rate;
-                                                                            }
-                                                                        });
-                                                                        if (maxRate > 0 && maxRate < 100) {
-                                                                            newEntries[idx].amount = parseFloat((baseAmount / (1 - (maxRate / 100))).toFixed(2));
-                                                                        } else {
-                                                                            newEntries[idx].amount = baseAmount;
-                                                                        }
-                                                                    }
-                                                                    setPaymentEntries(newEntries);
-                                                                }}
-                                                            >
-                                                                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 18, 21].map(i => {
-                                                                    let rate = 0;
-                                                                    const itemsToCheck = cart.length > 0 ? cart : [{ category: 'General' }];
-                                                                    itemsToCheck.forEach(item => {
-                                                                        const category = settings?.categories?.find(c => c.name?.toLowerCase() === (item.category || '').toLowerCase());
-                                                                        const gateways = Array.isArray(settings?.financial?.gateways) ? settings.financial.gateways : [];
-                                                                        const gateway = gateways.find(g => g.id === category?.gatewayId) || gateways.find(g => g.type === 'credit' || g.type === 'card' || g.brands) || gateways[0];
-                                                                        if (gateway && gateway.rates) {
-                                                                            let r = 0;
-                                                                            if (Array.isArray(gateway.rates)) {
-                                                                                const rateObj = gateway.rates.find(inst => parseInt(inst.installments) === i);
-                                                                                r = rateObj ? Number(rateObj.rate) : 0;
-                                                                            } else {
-                                                                                r = Number(gateway.rates[`credit${i}x`] || 0);
-                                                                            }
-                                                                            if (r > rate) rate = r;
-                                                                        }
-                                                                    });
-                                                                    const base = entry.originalAmount || entry.amount;
-                                                                    const pass = entry.passFees !== false;
-                                                                    let final = base;
-                                                                    if (pass && rate > 0 && rate < 100) final = base / (1 - (rate / 100));
-                                                                    return (
-                                                                        <option key={i} value={i}>
-                                                                            {i}x {formatCurrency(final / i)}
-                                                                        </option>
-                                                                    );
-                                                                })}
-                                                            </select>
-                                                            <ChevronDown className="absolute right-1 top-1/2 -translate-y-1/2 w-3 h-3 text-indigo-400 pointer-events-none" />
-                                                        </div>
-
-                                                        {/* Pass Fees Toggle */}
-                                                        <div
-                                                            onClick={() => {
-                                                                const newEntries = [...paymentEntries];
-                                                                const currentPass = newEntries[idx].passFees !== false;
-                                                                newEntries[idx].passFees = !currentPass;
-                                                                const passFees = !currentPass;
-                                                                const baseAmount = newEntries[idx].originalAmount || newEntries[idx].amount;
-                                                                const inst = newEntries[idx].installments || 1;
-
-                                                                if (!passFees) {
-                                                                    newEntries[idx].amount = baseAmount;
-                                                                } else {
-                                                                    let maxRate = 0;
-                                                                    const itemsToCheck = cart.length > 0 ? cart : [{ category: 'General' }];
-                                                                    itemsToCheck.forEach(item => {
-                                                                        const category = settings?.categories?.find(c => c.name?.toLowerCase() === (item.category || '').toLowerCase());
-                                                                        const gateways = Array.isArray(settings?.financial?.gateways) ? settings.financial.gateways : [];
-                                                                        const gateway = gateways.find(g => g.id === category?.gatewayId) || gateways.find(g => g.type === 'credit' || g.type === 'card' || g.brands) || gateways[0];
-                                                                        if (gateway && gateway.rates) {
-                                                                            let rate = 0;
-                                                                            if (Array.isArray(gateway.rates)) {
-                                                                                const rateObj = gateway.rates.find(r => parseInt(r.installments) === inst);
-                                                                                rate = rateObj ? Number(rateObj.rate) : 0;
-                                                                            } else {
-                                                                                rate = Number(gateway.rates[`credit${inst}x`] || 0);
-                                                                            }
-                                                                            if (rate > maxRate) maxRate = rate;
-                                                                        }
-                                                                    });
-                                                                    if (maxRate > 0 && maxRate < 100) {
-                                                                        newEntries[idx].amount = parseFloat((baseAmount / (1 - (maxRate / 100))).toFixed(2));
-                                                                    } else {
-                                                                        newEntries[idx].amount = baseAmount;
-                                                                    }
-                                                                }
-                                                                setPaymentEntries(newEntries);
-                                                            }}
-                                                            className={cn("cursor-pointer px-3 py-1.5 rounded-lg border flex items-center gap-2 transition-all select-none",
-                                                                entry.passFees !== false ? "bg-indigo-600 border-indigo-600 text-white" : "bg-white border-slate-200 text-slate-400 hover:border-slate-300"
-                                                            )}
-                                                        >
-                                                            <div className={cn("w-2 h-2 rounded-full", entry.passFees !== false ? "bg-white" : "bg-slate-300")} />
-                                                            <span className="text-[9px] font-bold uppercase tracking-wider">Taxas</span>
-                                                        </div>
-                                                    </div>
-                                                )}
-
-                                                {/* Fiado Config (Inline) */}
-                                                {entry.method === 'fiado' && (
-                                                    <div className="flex items-center gap-2 flex-1 w-full justify-end">
-                                                        {/* Installments Selector for Fiado */}
-                                                        <div className="relative min-w-[90px]">
-                                                            <select
-                                                                className="w-full text-[11px] font-bold bg-amber-50 text-amber-900 outline-none cursor-pointer border border-amber-200 rounded-lg py-1.5 pl-2 pr-6 appearance-none hover:bg-amber-100 transition-all"
-                                                                value={entry.installments || 1}
-                                                                onChange={(e) => {
-                                                                    const newEntries = [...paymentEntries];
-                                                                    newEntries[idx].installments = parseInt(e.target.value);
-                                                                    setPaymentEntries(newEntries);
-                                                                }}
-                                                            >
-                                                                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(i => (
-                                                                    <option key={i} value={i}>
-                                                                        {i}x {formatCurrency(entry.amount / i)}
-                                                                    </option>
-                                                                ))}
-                                                            </select>
-                                                            <ChevronDown className="absolute right-1 top-1/2 -translate-y-1/2 w-3 h-3 text-amber-600 pointer-events-none" />
-                                                        </div>
-
-                                                        <input
-                                                            type="date"
-                                                            className="text-xs font-bold bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 outline-none cursor-pointer border border-slate-200 dark:border-white/10 rounded-lg px-2 py-1.5 hover:border-amber-300 focus:border-amber-500 transition-all w-[110px]"
-                                                            value={entry.dueDate}
-                                                            onChange={(e) => {
-                                                                const newEntries = [...paymentEntries];
-                                                                newEntries[idx].dueDate = e.target.value;
-                                                                setPaymentEntries(newEntries);
-                                                            }}
-                                                        />
-                                                    </div>
-                                                )}
-
-                                                {/* Actions */}
-                                                <button
-                                                    onClick={() => setPaymentEntries(prev => prev.filter(p => p.id !== entry.id))}
-                                                    className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
-                                                >
-                                                    <Trash2 className="w-4 h-4" />
-                                                </button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                    {discount > 0 && (
-                                        <div className="bg-red-50 border-2 border-red-100 p-4 rounded-2xl flex items-center justify-between group">
-                                            <div className="flex items-center gap-4">
-                                                <div className="p-3 bg-red-100 text-red-600 rounded-xl">
-                                                    <TicketPercent className="w-5 h-5" />
-                                                </div>
-                                                <div>
-                                                    <p className="text-[10px] font-black uppercase tracking-widest text-red-400">Desconto Aplicado</p>
-                                                    <p className="font-black text-red-600">-{formatCurrency(discount)}</p>
-                                                </div>
-                                            </div>
-                                            <button onClick={() => setDiscount(0)} className="p-2 text-red-300 hover:text-red-500 rounded-xl">
-                                                <X className="w-4 h-4" />
-                                            </button>
-                                        </div>
-                                    )}
-
-                                    {surcharge > 0 && (
-                                        <div className="bg-blue-50 border-2 border-blue-100 p-4 rounded-2xl flex items-center justify-between group animate-in slide-in-from-bottom-2 fade-in">
-                                            <div className="flex items-center gap-4">
-                                                <div className="p-3 bg-blue-100 text-blue-600 rounded-xl">
-                                                    <TrendingUp className="w-5 h-5" />
-                                                </div>
-                                                <div>
-                                                    <p className="text-[10px] font-black uppercase tracking-widest text-blue-400">Juros / Acréscimo</p>
-                                                    <p className="font-black text-blue-600">+{formatCurrency(surcharge)}</p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {/* Finish Action Card */}
-                                    <div className={cn("p-8 rounded-[2.5rem] flex flex-col items-center text-center space-y-4 transition-all relative overflow-hidden shadow-2xl",
-                                        remainingBalance <= 0.01 ? "bg-gradient-to-br from-emerald-500 via-teal-600 to-cyan-700 text-white shadow-emerald-200" : "bg-white border-2 border-slate-100 shadow-xl shadow-slate-200/50"
-                                    )}>
-                                        {remainingBalance <= 0.01 && (
-                                            <>
-                                                <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10" />
-                                                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-300 via-white to-emerald-300 animate-pulse" />
-                                            </>
-                                        )}
-
-                                        {remainingBalance > 0.01 ? (
-                                            <>
-                                                <div className="w-16 h-16 bg-slate-50 dark:bg-slate-950 rounded-[1.5rem] flex items-center justify-center text-slate-300 shadow-inner group-hover:scale-110 transition-transform mb-2">
-                                                    <Clock className="w-8 h-8" strokeWidth={1.5} />
-                                                </div>
-                                                <div>
-                                                    <p className="text-[10px] font-black uppercase tracking-[0.5em] text-slate-400 mb-2 px-4 py-1.5 bg-slate-50 dark:bg-slate-950 rounded-full inline-block border border-slate-100 shadow-sm dark:shadow-slate-900/50">Aguardando Liquidação</p>
-                                                    <h3 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter mb-2">
-                                                        {formatCurrency(remainingBalance)}
-                                                    </h3>
-                                                    <p className="text-xs font-bold text-slate-400 max-w-sm mx-auto leading-relaxed">Vincule o saldo pendente acima para liberar a finalização do fluxo.</p>
-                                                </div>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <div className="w-20 h-20 bg-white dark:bg-slate-900/20 backdrop-blur-xl rounded-[2rem] flex items-center justify-center text-white shadow-2xl dark:shadow-slate-900/50 animate-bounce relative z-10">
-                                                    <Check className="w-10 h-10" strokeWidth={5} />
-                                                </div>
-                                                <div className="relative z-10">
-                                                    <p className="text-[12px] font-black uppercase tracking-[0.6em] text-emerald-100 mb-2">Operação Autorizada</p>
-                                                    <h3 className="text-3xl font-black text-white tracking-tighter mb-4">Pronto para Finalizar</h3>
-                                                    <button
-                                                        id="finalize-sale-btn"
-                                                        onClick={handleFinishSale}
-                                                        disabled={isProcessingSale}
-                                                        className="px-10 py-4 bg-white dark:bg-slate-900 text-emerald-600 rounded-[2rem] font-black uppercase tracking-[0.3em] text-xs shadow-2xl dark:shadow-slate-900/50 hover:scale-105 active:scale-95 transition-all flex items-center gap-3 group/btn overflow-hidden relative"
-                                                    >
-                                                        <div className="absolute inset-0 bg-emerald-50 translate-y-full group-hover/btn:translate-y-0 transition-transform" />
-                                                        {isProcessingSale ? (
-                                                            <Loader2 className="w-5 h-5 animate-spin relative z-10" />
-                                                        ) : (
-                                                            <>
-                                                                <span className="relative z-10">Confirmar e Imprimir</span>
-                                                                <ArrowUpRight className="w-5 h-5 relative z-10 group-hover/btn:translate-x-1 group-hover/btn:-translate-y-1 transition-transform" />
-                                                            </>
-                                                        )}
-                                                    </button>
-                                                </div>
-                                            </>
-                                        )}
-                                    </div>
-                                </div>
-                            )}
-                        </div>
+                        </div >
 
                         <div className="hidden lg:flex lg:w-[400px] bg-white dark:bg-slate-900 border-l border-slate-100 p-8 flex-col shadow-2xl dark:shadow-slate-900/50 z-30">
-                            <SummaryContent />
+                            <CheckoutSidebar />
                         </div>
 
                         {/* Mobile Cart Trigger */}
                         {/* Mobile Floating Command */}
-                        {view === 'new-sale' && cart.length > 0 && !showMobileSummary && (
-                            <button
-                                onClick={() => setShowMobileSummary(true)}
-                                className="fixed bottom-8 right-8 w-20 h-20 bg-indigo-600 text-white rounded-[2rem] shadow-2xl dark:shadow-slate-900/50 shadow-indigo-300 lg:hidden flex items-center justify-center animate-bounce z-[60] border-4 border-white active:scale-90 transition-transform"
-                            >
-                                <div className="absolute -top-3 -right-3 w-8 h-8 bg-red-500 rounded-full flex items-center justify-center text-[10px] font-black border-2 border-white shadow-lg dark:shadow-slate-900/50">
-                                    {cart.length}
-                                </div>
-                                <ShoppingCart className="w-8 h-8" strokeWidth={2.5} />
-                            </button>
-                        )}
+                        {
+                            view === 'new-sale' && cart.length > 0 && !showMobileSummary && (
+                                <button
+                                    onClick={() => setShowMobileSummary(true)}
+                                    className="fixed bottom-8 right-8 w-20 h-20 bg-indigo-600 text-white rounded-[2rem] shadow-2xl dark:shadow-slate-900/50 shadow-indigo-300 lg:hidden flex items-center justify-center animate-bounce z-[60] border-4 border-white active:scale-90 transition-transform"
+                                >
+                                    <div className="absolute -top-3 -right-3 w-8 h-8 bg-red-500 rounded-full flex items-center justify-center text-[10px] font-black border-2 border-white shadow-lg dark:shadow-slate-900/50">
+                                        {cart.length}
+                                    </div>
+                                    <ShoppingCart className="w-8 h-8" strokeWidth={2.5} />
+                                </button>
+                            )
+                        }
 
                         {/* Mobile Summary Sheet */}
-                        {showMobileSummary && (
-                            <div className="lg:hidden fixed inset-0 z-[60] bg-slate-900/60 backdrop-blur-sm animate-in fade-in">
-                                <div className="absolute bottom-0 left-0 right-0 max-h-[90vh] bg-white dark:bg-slate-900 rounded-t-[2.5rem] flex flex-col animate-in slide-in-from-bottom duration-300">
-                                    <div className="p-6 border-b border-slate-100 flex items-center justify-between">
-                                        <h4 className="font-black text-slate-800 dark:text-slate-100 uppercase tracking-widest text-xs">Resumo do Pedido</h4>
-                                        <button onClick={() => setShowMobileSummary(false)} className="p-2 bg-slate-100 dark:bg-slate-800 rounded-full">
-                                            <X className="w-5 h-5 text-slate-500" />
-                                        </button>
-                                    </div>
-                                    <div className="flex-1 overflow-y-auto p-6">
-                                        <SummaryContent />
+                        {
+                            showMobileSummary && (
+                                <div className="lg:hidden fixed inset-0 z-[60] bg-slate-900/60 backdrop-blur-sm animate-in fade-in">
+                                    <div className="absolute bottom-0 left-0 right-0 max-h-[90vh] bg-white dark:bg-slate-900 rounded-t-[2.5rem] flex flex-col animate-in slide-in-from-bottom duration-300">
+                                        <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+                                            <h4 className="font-black text-slate-800 dark:text-slate-100 uppercase tracking-widest text-xs">Resumo do Pedido</h4>
+                                            <button onClick={() => setShowMobileSummary(false)} className="p-2 bg-slate-100 dark:bg-slate-800 rounded-full">
+                                                <X className="w-5 h-5 text-slate-500" />
+                                            </button>
+                                        </div>
+                                        <div className="flex-1 overflow-y-auto p-6">
+                                            <CheckoutSidebar />
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        )}
+                            )
+                        }
 
 
 
-                    </div>
-                </div>
+                    </div >
+                </div >
             )
             }
 
