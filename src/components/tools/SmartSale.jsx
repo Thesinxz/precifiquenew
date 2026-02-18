@@ -1143,17 +1143,7 @@ export function SmartSale({ user, userProfile, settings }) {
             </div>
 
             {/* Client Form Modal (Kept for creating clients) */}
-            <ClientFormModal
-                open={isCreatingClient}
-                onClose={() => setIsCreatingClient(false)}
-                onSaved={(client) => {
-                    setClients(prev => [...prev, client]);
-                    setSelectedClient(client);
-                    setStep(2);
-                }}
-                user={user}
-                userProfile={userProfile}
-            />
+
         </div>
     );
 
@@ -2433,6 +2423,19 @@ export function SmartSale({ user, userProfile, settings }) {
                     </div>
                 )
             }
+
+            {/* Client Form Modal (Moved to top level for stability) */}
+            <ClientFormModal
+                open={isCreatingClient}
+                onClose={() => setIsCreatingClient(false)}
+                onSaved={(client) => {
+                    setClients(prev => [...prev, client]);
+                    setSelectedClient(client);
+                    setStep(2);
+                }}
+                user={user}
+                userProfile={userProfile}
+            />
 
             {/* Invoice Emission Modal */}
             <InvoiceEmissionModal
