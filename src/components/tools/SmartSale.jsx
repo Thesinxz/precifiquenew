@@ -928,7 +928,8 @@ export function SmartSale({ user, userProfile, settings }) {
     };
 
     // --- CHECKOUT SIDEBAR (SPLIT VIEW RIGHT PANEL) ---
-    const CheckoutSidebar = () => (
+    // --- CHECKOUT SIDEBAR (SPLIT VIEW RIGHT PANEL) ---
+    const checkoutSidebarContent = (
         <div className="flex flex-col h-full relative">
             {/* 1. Client Header (Compact) */}
             {selectedClient && (
@@ -1757,7 +1758,7 @@ export function SmartSale({ user, userProfile, settings }) {
                         </div >
 
                         <div className="hidden lg:flex lg:w-[400px] bg-white dark:bg-slate-900 border-l border-slate-100 p-8 flex-col shadow-2xl dark:shadow-slate-900/50 z-30">
-                            <CheckoutSidebar />
+                            {checkoutSidebarContent}
                         </div>
 
                         {/* Mobile Cart Trigger */}
@@ -1788,7 +1789,7 @@ export function SmartSale({ user, userProfile, settings }) {
                                             </button>
                                         </div>
                                         <div className="flex-1 overflow-y-auto p-6">
-                                            <CheckoutSidebar />
+                                            {checkoutSidebarContent}
                                         </div>
                                     </div>
                                 </div>
