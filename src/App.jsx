@@ -288,6 +288,10 @@ function AppContent() {
             <Route path="payables" element={<PayablesPage user={user} userProfile={userProfile} settings={appSettings} />} />
             <Route path="automations" element={<AutomationsPage user={user} userProfile={userProfile} settings={appSettings} />} />
             <Route path="requests" element={<InternalRequests user={user} userProfile={userProfile} />} />
+            <Route path="team" element={<TeamPage user={user} userProfile={userProfile} settings={appSettings} />} />
+            <Route path="wiki" element={<WikiPage user={user} userProfile={userProfile} settings={appSettings} />} />
+            <Route path="terms" element={<TermsManager user={user} userProfile={userProfile} settings={appSettings} />} />
+            <Route path="history" element={<HistoryPage user={user} userProfile={userProfile} settings={appSettings} />} />
 
             <Route path="settings" element={<SettingsPanel user={user} userProfile={userProfile} settings={appSettings} onSave={async (newSettings) => {
               const targetId = userProfile?.organizationId || user?.uid;
