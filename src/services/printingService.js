@@ -1033,6 +1033,62 @@ export const PrintingService = {
         doc.text("ASSISTÊNCIA TÉCNICA", 140, currentY + 4);
         doc.text(dateStr, 105, currentY + 4, { align: 'center' });
 
+        // 9. Photos Evidence (Optional)
+        if (os.photos && os.photos.length > 0) {
+            doc.addPage();
+            doc.setFontSize(14);
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(79, 70, 229);
+            doc.text("EVIDÊNCIAS FOTOGRÁFICAS - ENTRADA", marginX, 20);
+
+            doc.setFontSize(8);
+            doc.setFont("helvetica", "normal");
+            doc.setTextColor(148, 163, 184);
+            doc.text(`Registro visual técnico para a OS #${os.osNumber}`, marginX, 25);
+
+            let photoY = 35;
+            let photoX = marginX;
+            const photoWidth = 85;
+            const photoHeight = 65;
+            const gap = 10;
+
+            for (let i = 0; i < os.photos.length; i++) {
+                try {
+                    const photo = os.photos[i];
+                    const img = await new Promise((resolve) => {
+                        const imgObj = new Image();
+                        imgObj.crossOrigin = "anonymous";
+                        imgObj.src = photo.url;
+                        imgObj.onload = () => resolve(imgObj);
+                        imgObj.onerror = () => resolve(null);
+                    });
+
+                    if (img) {
+                        doc.addImage(img, 'JPEG', photoX, photoY, photoWidth, photoHeight, undefined, 'FAST');
+                        doc.setDrawColor(226, 232, 240);
+                        doc.rect(photoX, photoY, photoWidth, photoHeight);
+                    }
+                } catch (e) {
+                    console.warn("Could not load image for PDF", e);
+                }
+
+                // Grid Logic
+                if (i % 2 === 0) {
+                    photoX = marginX + photoWidth + gap;
+                } else {
+                    photoX = marginX;
+                    photoY += photoHeight + gap;
+                }
+
+                // Check for new page
+                if (photoY > 250 && i < os.photos.length - 1) {
+                    doc.addPage();
+                    photoY = 20;
+                    photoX = marginX;
+                }
+            }
+        }
+
         doc.save(`OS_${os.osNumber}_${os.ownerName?.replace(/\s+/g, '_')}.pdf`);
     },
 

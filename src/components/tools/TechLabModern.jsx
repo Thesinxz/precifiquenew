@@ -12,6 +12,8 @@ import { ServiceOrderWizard } from './ServiceOrderWizard';
 import { PrintingService } from '../../services/printingService';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { PerformanceLab } from './PerformanceLab';
+import { BarChart3 } from 'lucide-react';
 
 const STATUSES = [
     {
@@ -299,12 +301,39 @@ export function TechLabModern({ user, userProfile, settings, darkMode }) {
                             </button>
                         );
                     })}
+
+                    <div className="w-px h-10 bg-slate-200 dark:bg-white/10 mx-2" />
+
+                    <button
+                        onClick={() => setActiveTab('performance')}
+                        className={cn(
+                            "flex items-center gap-3 px-6 py-4 rounded-2xl border-2 transition-all whitespace-nowrap",
+                            activeTab === 'performance'
+                                ? "bg-white dark:bg-slate-900 border-indigo-600 dark:border-indigo-400 shadow-lg dark:shadow-slate-900/50"
+                                : "bg-white dark:bg-slate-900 border-slate-100 dark:border-white/10 hover:border-slate-200 dark:hover:border-white/20"
+                        )}
+                    >
+                        <div className={cn(
+                            "w-10 h-10 rounded-xl flex items-center justify-center transition-colors",
+                            activeTab === 'performance'
+                                ? "bg-indigo-600 text-white"
+                                : "bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400"
+                        )}>
+                            <BarChart3 className="w-5 h-5" />
+                        </div>
+                        <div className="text-left">
+                            <p className="text-sm font-black text-slate-900 dark:text-white">Performance</p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">Metricas & TAT</p>
+                        </div>
+                    </button>
                 </div>
             </div>
 
-            {/* OS Cards Grid */}
+            {/* OS Cards Grid or Performance Panel */}
             <div className="w-full">
-                {filteredItems.length === 0 ? (
+                {activeTab === 'performance' ? (
+                    <PerformanceLab userProfile={userProfile} settings={settings} />
+                ) : filteredItems.length === 0 ? (
                     <div className="bg-white dark:bg-slate-900 rounded-3xl p-12 border border-slate-100 dark:border-white/10 text-center">
                         <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 dark:bg-white dark:bg-slate-900/10 rounded-full flex items-center justify-center mx-auto mb-4">
                             <AlertCircle className="w-8 h-8 text-slate-400" />

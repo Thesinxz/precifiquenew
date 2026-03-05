@@ -8,6 +8,7 @@ import { cn, formatCurrency } from '../../../lib/utils';
 import { StockService } from '../../../services/stockService';
 import { getSmartImage } from '../../../data/smartAssets';
 import { IPHONE_DATA, getProductImage } from '../../../lib/data/iphoneData';
+import { generateProductCopy } from '../../../services/aiService';
 
 // Helper to visualize colors from names
 const getColorHex = (name) => {
@@ -30,6 +31,7 @@ const getColorHex = (name) => {
 
 export function ProductForm({ open, onClose, item, onSaved, orgId, userId, settings, showToast }) {
     const [isSaving, setIsSaving] = useState(false);
+    const [isGeneratingCopy, setIsGeneratingCopy] = useState(false);
     const [suggestions, setSuggestions] = useState([]);
     const [selectedOfficialModel, setSelectedOfficialModel] = useState(null);
     const [formData, setFormData] = useState({
@@ -518,14 +520,37 @@ export function ProductForm({ open, onClose, item, onSaved, orgId, userId, setti
                                 </div>
                             </div>
 
-                            {/* Section 5: Internal Notes */}
+                            {/* Section 5: Ad & Notes */}
                             <div className="space-y-4">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Observações Internas (Opcional)</label>
+                                <div className="flex justify-between items-end">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Anúncio & Observações</label>
+                                    <button
+                                        type="button"
+                                        onClick={async () => {
+                                            if (!formData.name) return showToast("Defina o nome do produto primeiro", "warning");
+                                            setIsGeneratingCopy(true);
+                                            try {
+                                                const copy = await generateProductCopy(formData);
+                                                setFormData({ ...formData, description: copy });
+                                                showToast("Anúncio gerado com sucesso!", "success");
+                                            } catch (e) {
+                                                showToast("Erro ao gerar anúncio: " + e.message, "error");
+                                            } finally {
+                                                setIsGeneratingCopy(false);
+                                            }
+                                        }}
+                                        disabled={isGeneratingCopy || !formData.name}
+                                        className="flex items-center gap-2 px-4 py-2 bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-300 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition-all disabled:opacity-50 border border-indigo-100 dark:border-indigo-800"
+                                    >
+                                        {isGeneratingCopy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Info className="w-3 h-3 text-indigo-500 animate-pulse" />}
+                                        ✨ Mágico AI
+                                    </button>
+                                </div>
                                 <textarea
-                                    placeholder="Ex: Fornecedor X, Garantia até mês Y..."
+                                    placeholder="Use o Mágico AI para gerar um anúncio impossível de ignorar ou digite observações aqui..."
                                     value={formData.description}
                                     onChange={e => setFormData({ ...formData, description: e.target.value })}
-                                    className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-5 rounded-[1.5rem] outline-none focus:ring-4 focus:ring-indigo-500/5 transition-all text-xs font-medium text-slate-600 resize-none h-24"
+                                    className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-6 rounded-[2rem] outline-none focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500/50 transition-all text-[11px] font-medium text-slate-600 dark:text-slate-400 resize-none h-48 custom-scrollbar shadow-inner"
                                 />
                             </div>
                         </div>

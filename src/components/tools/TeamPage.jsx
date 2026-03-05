@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
 import {
     Users,
     UserPlus,
+    Calendar,
     Shield,
     ShieldCheck,
     ShieldAlert,
@@ -24,7 +24,7 @@ import { UserService } from '../../services/userService';
 import { SalesService } from '../../services/salesService';
 import { useToast } from '../ui/Toast';
 import { cn, formatCurrency } from '../../lib/utils';
-import { startOfMonth, endOfMonth } from 'date-fns';
+import { startOfMonth, endOfMonth, format } from 'date-fns';
 
 export function TeamPage({ userProfile }) {
     const [team, setTeam] = useState([]);
@@ -35,6 +35,10 @@ export function TeamPage({ userProfile }) {
 
     // Edit Form State
     const [editForm, setEditForm] = useState({});
+
+    // Date Filters
+    const [startDate, setStartDate] = useState(format(startOfMonth(new Date()), 'yyyy-MM-dd'));
+    const [endDate, setEndDate] = useState(format(endOfMonth(new Date()), 'yyyy-MM-dd'));
 
     // Close modals on ESC
     useEffect(() => {
@@ -57,14 +61,19 @@ export function TeamPage({ userProfile }) {
         } else {
             setIsLoading(false);
         }
-    }, [orgId]);
+    }, [orgId, startDate, endDate]);
 
     const loadData = async () => {
         setIsLoading(true);
         try {
+            const start = new Date(startDate);
+            start.setHours(0, 0, 0, 0);
+            const end = new Date(endDate);
+            end.setHours(23, 59, 59, 999);
+
             const [teamData, salesData] = await Promise.all([
                 UserService.getTeam(orgId),
-                SalesService.getSales(orgId, startOfMonth(new Date()), endOfMonth(new Date()))
+                SalesService.getSales(orgId, start, end)
             ]);
             setTeam(teamData);
             setSales(salesData);
@@ -149,12 +158,31 @@ export function TeamPage({ userProfile }) {
                     <p className="text-slate-500 font-medium mt-1">Gerencie vendedores, comissões e acompanhe o desempenho.</p>
                 </div>
 
-                <button
-                    onClick={() => setIsInviteOpen(true)}
-                    className="bg-indigo-600 text-white px-6 py-3 rounded-2xl font-bold hover:bg-indigo-700 transition-all shadow-lg dark:shadow-slate-900/50 shadow-indigo-200 active:scale-95 flex items-center gap-2"
-                >
-                    <UserPlus className="w-5 h-5" /> Convidar Membro
-                </button>
+                <div className="flex flex-col sm:flex-row items-center gap-4">
+                    <div className="bg-white dark:bg-slate-900 p-1.5 rounded-2xl border border-slate-200 dark:border-white/10 flex items-center gap-2 shadow-sm w-full sm:w-auto">
+                        <Calendar className="w-5 h-5 text-indigo-500 ml-3" />
+                        <input
+                            type="date"
+                            value={startDate}
+                            onChange={e => setStartDate(e.target.value)}
+                            className="bg-transparent text-sm font-bold text-slate-700 dark:text-slate-300 p-2 outline-none cursor-pointer w-full sm:w-auto"
+                        />
+                        <span className="text-slate-300 text-sm font-medium">até</span>
+                        <input
+                            type="date"
+                            value={endDate}
+                            onChange={e => setEndDate(e.target.value)}
+                            className="bg-transparent text-sm font-bold text-slate-700 dark:text-slate-300 p-2 outline-none cursor-pointer w-full sm:w-auto"
+                        />
+                    </div>
+
+                    <button
+                        onClick={() => setIsInviteOpen(true)}
+                        className="w-full sm:w-auto bg-indigo-600 text-white px-6 py-3.5 rounded-2xl font-bold hover:bg-indigo-700 transition-all shadow-lg dark:shadow-slate-900/50 shadow-indigo-200 active:scale-95 flex items-center justify-center gap-2 whitespace-nowrap"
+                    >
+                        <UserPlus className="w-5 h-5" /> Convidar Membro
+                    </button>
+                </div>
             </div>
 
             {/* Team Grid */}
@@ -230,7 +258,7 @@ export function TeamPage({ userProfile }) {
                                     {/* Stats Grid */}
                                     <div className="grid grid-cols-2 gap-4 mb-6 relative z-10">
                                         <div className="bg-slate-50 dark:bg-slate-950 p-4 rounded-2xl border border-slate-100">
-                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Vendas (Mês)</p>
+                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Vendas (Período)</p>
                                             <p className="text-lg font-black text-slate-800 dark:text-slate-100">{formatCurrency(stats.totalSold)}</p>
                                             {moneyGoal > 0 && (
                                                 <div className="mt-2 w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">

@@ -32,6 +32,7 @@ const MarketingPage = lazy(() => import("./components/tools/MarketingPage").then
 const InboxPage = lazy(() => import("./components/tools/InboxPage").then(m => ({ default: m.InboxPage })));
 const PublicProposal = lazy(() => import("./components/public/PublicProposal").then(m => ({ default: m.PublicProposal })));
 const PublicCatalog = lazy(() => import("./components/public/PublicCatalog").then(m => ({ default: m.PublicCatalog })));
+const PublicTracking = lazy(() => import("./components/public/PublicTracking").then(m => ({ default: m.PublicTracking })));
 const TVMode = lazy(() => import("./components/public/TVMode").then(m => ({ default: m.TVMode })));
 const TaxReconciliation = lazy(() => import("./components/calculators/TaxReconciliation").then(m => ({ default: m.TaxReconciliation })));
 const ReceivablesPage = lazy(() => import("./components/tools/ReceivablesPage").then(m => ({ default: m.ReceivablesPage })));
@@ -235,6 +236,7 @@ function AppContent() {
           <Route path="/public/proposal/:id" element={<PublicProposalRoute />} />
           <Route path="/public/catalog/:id" element={<PublicCatalogRoute />} />
           <Route path="/public/tv/:id" element={<TVModeRoute />} />
+          <Route path="/track/:id" element={<PublicTracking />} />
 
           {/* Dashboard / Protected Routes */}
           <Route

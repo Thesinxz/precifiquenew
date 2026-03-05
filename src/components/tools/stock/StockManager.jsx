@@ -211,14 +211,14 @@ export function StockManager({ user, userProfile, settings, isSalesMode }) {
         try {
             for (const it of newItems) {
                 const formData = {
-                    name: it.productName,
-                    category: it.category,
-                    quantity: String(it.quantity),
-                    cost: String(it.cost),
-                    price: String(it.cost * 1.3), // Basic markup
+                    name: it.productName || "Produto Não Identificado",
+                    category: it.category || "",
+                    quantity: String(it.quantity || 1),
+                    cost: String(it.cost || 0),
+                    price: String((parseFloat(it.cost) || 0) * 1.3), // Basic markup
                     storage: it.storage || "",
                     color: it.color || "",
-                    type: it.category?.toLowerCase().includes('peça') ? 'part' : 'device',
+                    type: (it.category || "").toLowerCase().includes('peça') ? 'part' : 'device',
                     imageUrl: getProductImage(it.productName, it.color) || ""
                 };
                 await StockService.addItem(orgId, userId, formData);

@@ -215,3 +215,40 @@ export async function askSalesAgent(question, products) {
     const response = await result.response;
     return response.text();
 }
+
+/**
+ * Generates a high-conversion sales copy for a product.
+ * @param {Object} product - Product details
+ * @returns {Promise<string>} - Persuasive ad text
+ */
+export async function generateProductCopy(product) {
+    if (!API_KEY) throw new Error("Gemini API Key missing.");
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+    const prompt = `
+        Atue como um especialista em marketing de eletrônicos premium e revenda Apple.
+        Crie um anúncio persuasivo para o seguinte produto:
+        
+        PRODUTO: ${product.name}
+        COR: ${product.color}
+        ARMAZENAMENTO: ${product.storage}
+        CONDIÇÃO: ${product.condition} (Novo/Seminovo)
+        SAÚDE DA BATERIA: ${product.batteryHealth}%
+        PREÇO SUGERIDO: ${product.price}
+        
+        DIRETRIZES:
+        1. Comece com um gancho emocional (Ex: "A oportunidade que você esperava!")
+        2. Destaque os benefícios (Design, performance, estado impecável).
+        3. Se a bateria for > 90%, enfatize como "Bateria Excelente".
+        4. O tom deve ser PROFISSIONAL, EXCLUSIVO e CONVINCENTE.
+        5. Use emojis moderados e elegantes.
+        6. Organize em tópicos curtos.
+        7. Termine com uma Chamada para Ação (CTA) forte.
+        
+        RETORNE APENAS O TEXTO DO ANÚNCIO.
+    `;
+
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    return response.text();
+}

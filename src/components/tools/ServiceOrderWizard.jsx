@@ -77,7 +77,8 @@ export function ServiceOrderWizard({ open, onClose, user, userProfile, onSaved, 
         patternData: null,
         visualEvidence: [],
         drawingMode: false,
-        photos: [] // Uploaded photos with URLs and paths
+        photos: [], // Uploaded photos with URLs and paths
+        functionalChecklist: {} // New field
     });
 
     const [activeAccordion, setActiveAccordion] = useState(null); // 'security', 'accessories', 'physical'
@@ -488,6 +489,7 @@ export function ServiceOrderWizard({ open, onClose, user, userProfile, onSaved, 
                                         {[
                                             { id: 'security', label: 'Senhas e Acesso', icon: ShieldCheck, isFilled: deviceData.passwordType !== 'none' },
                                             { id: 'accessories', label: 'Acessórios e Itens', icon: Box, isFilled: deviceData.accessoriesIn.length > 0 },
+                                            { id: 'checklist', label: 'Checklist Funcional', icon: CheckCircle2, isFilled: Object.keys(deviceData.functionalChecklist || {}).length > 0 },
                                             { id: 'physical', label: 'Danos e Estado Físico', icon: Camera, isFilled: deviceData.visualEvidence.length > 0 || deviceData.photos.length > 0 }
                                         ].map((acc) => (
                                             <div key={acc.id} className="border border-slate-100 rounded-2xl overflow-hidden shadow-sm dark:shadow-slate-900/50">
@@ -575,6 +577,15 @@ export function ServiceOrderWizard({ open, onClose, user, userProfile, onSaved, 
                                                                         </div>
                                                                     );
                                                                 })}
+                                                            </div>
+                                                        )}
+                                                        {acc.id === 'checklist' && (
+                                                            <div className="space-y-4">
+                                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Teste Rápido de Entrada</p>
+                                                                <FunctionalChecklist
+                                                                    value={deviceData.functionalChecklist}
+                                                                    onChange={(c) => setDeviceData({ ...deviceData, functionalChecklist: c })}
+                                                                />
                                                             </div>
                                                         )}
                                                         {acc.id === 'physical' && (
