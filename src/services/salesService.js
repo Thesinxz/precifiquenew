@@ -425,34 +425,42 @@ export const SalesService = {
                     throw new Error("Você não tem permissão para cancelar vendas de outra organização");
                 }
 
-                // 1. Restore Stock
+                // 1. Collect all Item Data (READS PHASE)
+                const itemsToRestore = [];
                 for (const item of saleData.items || []) {
-                    console.log("Restoring item:", item.id, item.name);
                     if (item.id) {
                         const itemRef = doc(db, "stock", item.id);
                         const itemDoc = await transaction.get(itemRef);
                         if (itemDoc.exists()) {
-                            const currentQty = itemDoc.data().quantity || 0;
-                            const restoreQty = item.quantity || 1;
-                            transaction.update(itemRef, {
-                                quantity: currentQty + restoreQty,
-                                updatedAt: serverTimestamp()
-                            });
-
-                            // Log Movement (In)
-                            const moveRef = doc(collection(db, "stockMovements"));
-                            transaction.set(moveRef, {
-                                stockId: item.id,
-                                itemName: item.name,
-                                type: 'in',
-                                quantity: restoreQty,
-                                reason: 'Cancelamento de Venda',
-                                userId: saleData.userId || saleData.sellerId || "System",
-                                organizationId: orgId,
-                                createdAt: serverTimestamp()
+                            itemsToRestore.push({
+                                item,
+                                itemRef,
+                                currentQty: itemDoc.data().quantity || 0
                             });
                         }
                     }
+                }
+
+                // 2. Perform all Updates (WRITES PHASE)
+                for (const { item, itemRef, currentQty } of itemsToRestore) {
+                    const restoreQty = item.quantity || 1;
+                    transaction.update(itemRef, {
+                        quantity: currentQty + restoreQty,
+                        updatedAt: serverTimestamp()
+                    });
+
+                    // Log Movement (In)
+                    const moveRef = doc(collection(db, "stockMovements"));
+                    transaction.set(moveRef, {
+                        stockId: item.id,
+                        itemName: item.name,
+                        type: 'in',
+                        quantity: restoreQty,
+                        reason: 'Cancelamento de Venda',
+                        userId: saleData.userId || saleData.sellerId || "System",
+                        organizationId: orgId,
+                        createdAt: serverTimestamp()
+                    });
                 }
 
                 // 2. Update Order Status if it exists
