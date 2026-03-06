@@ -2377,14 +2377,14 @@ export function PublicCatalog({ organizationId, sellerId, userProfile }) {
                                                         <div className="w-10 h-10 bg-blue-600 text-white rounded-xl flex items-center justify-center font-black text-[10px]"><CreditCard className="w-5 h-5" /></div>
                                                         <div className="flex-1 text-left">
                                                             <p className="text-sm font-bold">Cartão de Crédito</p>
-                                                            <p className="text-[10px] text-slate-500 font-black uppercase">Até 21x na máquina</p>
+                                                            <p className="text-[10px] text-slate-500 font-black uppercase">Até {settings?.financial?.gateways?.[0]?.rates?.maxInstallments || 21}x na máquina</p>
                                                         </div>
                                                         {(selectedPaymentMethod === 'credit' || selectedPaymentMethod === 'installments') && <Check className="w-5 h-5 text-blue-500" />}
                                                     </button>
 
                                                     {(selectedPaymentMethod === 'credit' || selectedPaymentMethod === 'installments') && (
                                                         <div className="grid grid-cols-4 gap-2 pt-2 border-t border-white/5">
-                                                            {[1, 3, 6, 12, 18, 21].map(n => (
+                                                            {[1, 3, 6, 12, 18, 21, 24].filter(n => n <= (settings?.financial?.gateways?.[0]?.rates?.maxInstallments || 21)).map(n => (
                                                                 <button
                                                                     key={n}
                                                                     onClick={() => {

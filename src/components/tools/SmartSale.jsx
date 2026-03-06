@@ -80,6 +80,38 @@ export function SmartSale({ user, userProfile, settings }) {
     const [showPostSaleModal, setShowPostSaleModal] = useState(false);
     const [showInvoiceModal, setShowInvoiceModal] = useState(false);
 
+    // Dynamic Fee Calculation for Installments
+    const getGrossPrice = (net, installments) => {
+        if (!settings?.financial?.gateways?.length) return net;
+        const gateway = settings.financial.gateways[0];
+        const rates = gateway?.rates || {};
+        const nfRate = parseFloat(settings?.financial?.notaFiscalRate || 0);
+
+        // Find rate for installments
+        let rate = 0;
+        const count = parseInt(installments);
+        if (count === 1) {
+            rate = parseFloat(rates.credit1x || 0);
+        } else {
+            const key = `credit${count}x`;
+            if (rates[key] !== undefined && rates[key] !== null && rates[key] !== '') {
+                rate = parseFloat(rates[key]);
+            } else {
+                // Interpolation
+                const r1 = parseFloat(rates.credit1x || 2);
+                const r12 = parseFloat(rates.credit12x || 15);
+                const max = parseInt(rates.maxInstallments) || 12;
+                const step = max > 1 ? (r12 - r1) / (max - 1) : 0;
+                rate = r1 + (step * (count - 1));
+            }
+        }
+
+        const totalLoad = (rate + nfRate) / 100;
+        const divisor = 1 - totalLoad;
+        if (divisor <= 0 || divisor >= 1) return net; // Avoid division by zero or negative results
+        return net / divisor;
+    };
+
     // Tech Lab / Trade-In Integration
     const [showLabModal, setShowLabModal] = useState(false);
     const [labEntryData, setLabEntryData] = useState({
@@ -1054,12 +1086,20 @@ export function SmartSale({ user, userProfile, settings }) {
                                                     value={entry.installments || 1}
                                                     onChange={(e) => {
                                                         const newEntries = [...paymentEntries];
-                                                        newEntries[idx].installments = parseInt(e.target.value);
-                                                        // Simplified Installment Logic for Sidebar (Basic Recalc)
+                                                        const count = parseInt(e.target.value);
+                                                        newEntries[idx].installments = count;
+
+                                                        // Automatically recalculate amount if passing fees is enabled
+                                                        if (entry.passFees && entry.originalAmount) {
+                                                            newEntries[idx].amount = Math.round(getGrossPrice(entry.originalAmount, count) * 100) / 100;
+                                                        }
+
                                                         setPaymentEntries(newEntries);
                                                     }}
                                                 >
-                                                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(i => <option key={i} value={i}>{i}x</option>)}
+                                                    {Array.from({ length: settings?.financial?.gateways?.[0]?.rates?.maxInstallments || 21 }, (_, i) => i + 1).map(n => (
+                                                        <option key={n} value={n}>{n}x</option>
+                                                    ))}
                                                 </select>
                                             )}
                                         </div>
