@@ -1136,22 +1136,22 @@ export function SmartSale({ user, userProfile, settings }) {
                         </div>
                     ) : (
                         cart.map(item => (
-                            <div key={item.id} className="flex gap-3 items-start group relative p-2 hover:bg-slate-50 dark:hover:bg-white/5 rounded-xl transition-colors">
-                                <div className="w-10 h-10 bg-white dark:bg-slate-900 rounded-lg border border-slate-100 flex items-center justify-center shrink-0">
-                                    {item.imageUrl ? <img src={item.imageUrl} className="w-full h-full object-contain p-1" /> : <Smartphone className="w-4 h-4 text-slate-300" />}
+                            <div key={item.id} className="flex gap-3 items-start group relative p-3 hover:bg-slate-50 dark:hover:bg-white/5 rounded-2xl transition-all border border-transparent hover:border-slate-100 dark:hover:border-white/5">
+                                <div className="w-12 h-12 bg-white dark:bg-slate-950 rounded-xl border border-slate-100 dark:border-white/10 flex items-center justify-center shrink-0 shadow-sm">
+                                    {item.imageUrl ? <img src={item.imageUrl} className="w-full h-full object-contain p-1.5" /> : <Smartphone className="w-5 h-5 text-slate-300 dark:text-slate-700" />}
                                 </div>
-                                <div className="flex-1 min-w-0">
-                                    <p className="font-bold text-slate-800 dark:text-white text-xs leading-tight mb-1 truncate">{item.name}</p>
+                                <div className="flex-1 min-w-0 pt-0.5">
+                                    <p className="font-bold text-slate-800 dark:text-slate-100 text-[11px] leading-tight mb-1 truncate uppercase tracking-tight">{item.name}</p>
                                     <div className="flex justify-between items-center">
-                                        <div className="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-[10px] font-bold text-slate-500">{item.quantity}x</div>
-                                        <p className="font-bold text-slate-900 dark:text-white text-xs">{formatCurrency(item.sellingPrice * item.quantity)}</p>
+                                        <div className="bg-slate-100 dark:bg-slate-800/80 px-2 py-0.5 rounded-lg text-[10px] font-black text-slate-500 dark:text-slate-400 border border-slate-200/50 dark:border-white/5">{item.quantity}x</div>
+                                        <p className="font-black text-slate-900 dark:text-blue-400 text-xs tracking-tight">{formatCurrency(item.sellingPrice * item.quantity)}</p>
                                     </div>
                                 </div>
                                 <button
                                     onClick={() => removeFromCart(item.id)}
-                                    className="absolute top-1 right-1 p-1 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity bg-white dark:bg-slate-900 shadow-sm rounded-md"
+                                    className="absolute -top-1 -right-1 p-1.5 text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all bg-white dark:bg-slate-800 shadow-lg rounded-xl border border-slate-100 dark:border-white/10"
                                 >
-                                    <X className="w-3 h-3" />
+                                    <X className="w-3.5 h-3.5" />
                                 </button>
                             </div>
                         ))
@@ -1631,29 +1631,29 @@ export function SmartSale({ user, userProfile, settings }) {
                                                     setProductSearch(action.label);
                                                     document.querySelector('input[placeholder*="Buscar produto"]')?.focus();
                                                 }}
-                                                className="flex items-center gap-3 px-6 py-3 bg-white dark:bg-slate-900 border border-slate-100 rounded-2xl hover:border-indigo-500 hover:shadow-xl dark:shadow-slate-900/50 hover:shadow-indigo-500/5 transition-all whitespace-nowrap snap-start group"
+                                                className="flex items-center gap-3 px-6 py-3 bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 rounded-2xl hover:border-indigo-500 hover:shadow-xl dark:shadow-black/50 hover:shadow-indigo-500/5 transition-all whitespace-nowrap snap-start group"
                                             >
                                                 <div className={cn("w-8 h-8 rounded-xl flex items-center justify-center transition-all group-hover:bg-indigo-600 group-hover:text-white",
-                                                    action.color === 'blue' ? "bg-blue-50 text-blue-500" :
-                                                        action.color === 'amber' ? "bg-amber-50 text-amber-500" :
-                                                            action.color === 'emerald' ? "bg-emerald-50 text-emerald-500" :
-                                                                action.color === 'indigo' ? "bg-indigo-50 text-indigo-500" : "bg-orange-50 text-orange-500"
+                                                    action.color === 'blue' ? "bg-blue-50 dark:bg-blue-900/30 text-blue-500 dark:text-blue-400" :
+                                                        action.color === 'amber' ? "bg-amber-50 dark:bg-amber-900/30 text-amber-500 dark:text-amber-400" :
+                                                            action.color === 'emerald' ? "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-500 dark:text-emerald-400" :
+                                                                action.color === 'indigo' ? "bg-indigo-50 dark:bg-indigo-900/30 text-indigo-500 dark:text-indigo-400" : "bg-orange-50 dark:bg-orange-900/30 text-orange-500 dark:text-orange-400"
                                                 )}>
                                                     <action.icon className="w-4 h-4" />
                                                 </div>
-                                                <span className="text-[11px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-300 group-hover:text-indigo-900">{action.label}</span>
+                                                <span className="text-[11px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-400 group-hover:text-indigo-900 dark:group-hover:text-white">{action.label}</span>
                                             </button>
                                         ))}
                                     </div>
 
                                     <div className="flex gap-3">
                                         <div className="relative flex-1">
-                                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
+                                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 w-5 h-5" />
                                             <input
                                                 autoFocus
                                                 type="text"
                                                 placeholder="Buscar produto, IMEI ou Código (Enter p/ adicionar 1º)"
-                                                className="w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-slate-950 border-2 border-slate-200 dark:border-white/10 rounded-2xl outline-none focus:border-indigo-500 focus:bg-white dark:bg-slate-900 font-bold text-slate-700 dark:text-slate-200 text-lg transition-all shadow-sm dark:shadow-slate-900/50"
+                                                className="w-full pl-12 pr-4 py-4 bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-white/5 rounded-2xl outline-none focus:border-indigo-500 focus:shadow-[0_0_0_4px_rgba(99,102,241,0.1)] font-bold text-slate-700 dark:text-slate-100 text-lg transition-all shadow-sm dark:shadow-black/50"
                                                 value={productSearch}
                                                 onChange={e => setProductSearch(e.target.value)}
                                                 onKeyDown={(e) => {
@@ -1687,7 +1687,7 @@ export function SmartSale({ user, userProfile, settings }) {
                                                 if (productSearch) setQuickProductData(prev => ({ ...prev, name: productSearch }));
                                                 setShowQuickAddModal(true);
                                             }}
-                                            className="px-4 bg-indigo-50 text-indigo-600 rounded-2xl font-black uppercase tracking-wider text-[10px] border-2 border-indigo-100 hover:bg-indigo-500 hover:text-white hover:border-indigo-500 transition-all shadow-sm dark:shadow-slate-900/50 active:scale-95 flex flex-col items-center justify-center gap-1 min-w-[90px]"
+                                            className="px-4 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-2xl font-black uppercase tracking-wider text-[10px] border-2 border-indigo-100 dark:border-indigo-500/20 hover:bg-indigo-500 hover:text-white hover:border-indigo-500 transition-all shadow-sm dark:shadow-black/50 active:scale-95 flex flex-col items-center justify-center gap-1 min-w-[90px]"
                                         >
                                             <Plus className="w-5 h-5" />
                                             Cadastrar
@@ -1713,8 +1713,10 @@ export function SmartSale({ user, userProfile, settings }) {
                                                 onClick={() => addToCart(product)}
                                                 disabled={product.quantity <= 0}
                                                 className={cn(
-                                                    "group bg-white border border-slate-100 p-4 rounded-[2rem] transition-all text-left flex flex-col items-center relative overflow-hidden duration-200",
-                                                    product.quantity > 0 ? "hover:border-violet-500 hover:shadow-2xl hover:shadow-violet-200/50 active:scale-95 cursor-pointer" : "opacity-60 grayscale cursor-not-allowed"
+                                                    "group p-4 rounded-[2rem] transition-all text-left flex flex-col items-center relative overflow-hidden duration-200",
+                                                    product.quantity > 0
+                                                        ? "bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/10 hover:border-violet-500 hover:shadow-2xl hover:shadow-violet-200/50 active:scale-95 cursor-pointer"
+                                                        : "bg-slate-100 dark:bg-slate-800/50 border border-transparent opacity-60 grayscale cursor-not-allowed"
                                                 )}
                                             >
                                                 {product.quantity <= 0 && (
@@ -1722,9 +1724,9 @@ export function SmartSale({ user, userProfile, settings }) {
                                                         Esgotado
                                                     </div>
                                                 )}
-                                                <div className="w-full aspect-square bg-slate-50 dark:bg-slate-950 rounded-2xl mb-4 flex items-center justify-center relative overflow-hidden group-hover:bg-violet-50 transition-colors">
+                                                <div className="w-full aspect-square bg-slate-50 dark:bg-slate-950/50 rounded-2xl mb-4 flex items-center justify-center relative overflow-hidden group-hover:bg-violet-50 dark:group-hover:bg-violet-900/20 transition-colors border border-slate-100/50 dark:border-white/5">
                                                     {product.imageUrl ? (
-                                                        <img src={product.imageUrl} className="w-full h-full object-contain p-2 transition-transform duration-500 group-hover:scale-110 mix-blend-multiply" />
+                                                        <img src={product.imageUrl} className="w-full h-full object-contain p-2 transition-transform duration-500 group-hover:scale-110" />
                                                     ) : (
                                                         <Smartphone className="w-10 h-10 text-slate-300 group-hover:text-violet-400 transition-colors" />
                                                     )}
@@ -1737,13 +1739,13 @@ export function SmartSale({ user, userProfile, settings }) {
                                                 <h4 className="font-extrabold text-slate-700 dark:text-slate-200 text-sm text-center leading-tight mb-2 px-1 line-clamp-2 group-hover:text-violet-700 transition-colors">{product.name}</h4>
                                                 <div className="flex flex-col items-center gap-1.5 mb-3 w-full">
                                                     <div className="flex items-center gap-2 justify-center w-full">
-                                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest bg-slate-50 dark:bg-slate-950 px-2 py-0.5 rounded-md border border-slate-100">{product.storage}</span>
-                                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest bg-slate-50 dark:bg-slate-950 px-2 py-0.5 rounded-md border border-slate-100">{product.color}</span>
+                                                        <span className="text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-widest bg-slate-50 dark:bg-slate-950 px-2 py-0.5 rounded-md border border-slate-100 dark:border-white/10">{product.storage}</span>
+                                                        <span className="text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-widest bg-slate-50 dark:bg-slate-950 px-2 py-0.5 rounded-md border border-slate-100 dark:border-white/10">{product.color}</span>
                                                     </div>
-                                                    {product.imei && <p className="text-[9px] font-mono font-bold text-slate-400">IMEI: {product.imei.slice(-4)}</p>}
+                                                    {product.imei && <p className="text-[9px] font-mono font-bold text-slate-400 dark:text-slate-500 tracking-tight">IMEI: {product.imei.slice(-4)}</p>}
                                                 </div>
-                                                <div className="mt-auto pt-3 border-t border-slate-100 w-full text-center group-hover:border-violet-100 transition-colors">
-                                                    <span className="font-black text-slate-800 dark:text-slate-100 text-lg tracking-tight group-hover:text-violet-600 transition-colors">{formatCurrency(parsePrice(product))}</span>
+                                                <div className="mt-auto pt-3 border-t border-slate-100 dark:border-white/10 w-full text-center group-hover:border-violet-100 dark:group-hover:border-violet-900/30 transition-colors">
+                                                    <span className="font-black text-slate-800 dark:text-slate-100 text-lg tracking-tight group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors">{formatCurrency(parsePrice(product))}</span>
                                                 </div>
                                             </button>
                                         ))}
@@ -1764,24 +1766,24 @@ export function SmartSale({ user, userProfile, settings }) {
                                                         (p.name || '').toLowerCase().includes('carregador');
                                                     const inCart = cart.some(c => c.id === p.id);
                                                     return isAccessory && !inCart && p.quantity > 0;
-                                                }).slice(0, 5).map(acc => (
+                                                }).slice(0, 10).map(acc => (
                                                     <button
                                                         key={acc.id}
                                                         onClick={() => addToCart(acc)}
-                                                        className="min-w-[160px] bg-white dark:bg-slate-900 p-3 rounded-2xl border border-orange-100 hover:border-orange-400 hover:shadow-lg dark:shadow-slate-900/50 hover:shadow-orange-100 transition-all text-left flex flex-col gap-2 snap-start active:scale-95"
+                                                        className="min-w-[160px] bg-white dark:bg-slate-900 p-3 rounded-2xl border border-orange-100 dark:border-white/5 hover:border-orange-400 hover:shadow-lg dark:shadow-slate-900/50 hover:shadow-orange-100/10 transition-all text-left flex flex-col gap-2 snap-start active:scale-95 group"
                                                     >
-                                                        <div className="w-full h-24 bg-slate-50 dark:bg-slate-950 rounded-xl flex items-center justify-center">
+                                                        <div className="w-full h-24 bg-slate-50 dark:bg-slate-950/50 rounded-xl flex items-center justify-center border border-slate-100/50 dark:border-white/5">
                                                             {acc.imageUrl ? (
-                                                                <img src={acc.imageUrl} className="h-full object-contain mix-blend-multiply" />
+                                                                <img src={acc.imageUrl} className="h-full object-contain p-1" />
                                                             ) : (
                                                                 <Package className="w-6 h-6 text-orange-200" />
                                                             )}
                                                         </div>
                                                         <div>
                                                             <p className="text-xs font-bold text-slate-700 dark:text-slate-200 line-clamp-1">{acc.name}</p>
-                                                            <p className="text-[10px] font-black text-orange-500">{formatCurrency(acc.price)}</p>
+                                                            <p className="text-[10px] font-black text-orange-500">{formatCurrency(acc.price || acc.pixPrice)}</p>
                                                         </div>
-                                                        <div className="mt-auto w-full py-1.5 bg-orange-50 text-orange-600 rounded-lg text-[10px] font-black uppercase text-center group-hover:bg-orange-500 group-hover:text-white transition-colors">
+                                                        <div className="mt-auto w-full py-1.5 bg-orange-50 dark:bg-orange-950/30 text-orange-600 dark:text-orange-400 rounded-lg text-[10px] font-black uppercase text-center group-hover:bg-orange-500 group-hover:text-white transition-all">
                                                             Adicionar +
                                                         </div>
                                                     </button>
