@@ -164,6 +164,7 @@ export function DashboardPage({ user, userProfile, settings, isSalesMode, darkMo
         paymentMethods: [],
         topSellingItems: [],
         ranking: [], // Sales by user
+        myStats: { total: 0, sales: 0, items: 0, position: '--', todayTotal: 0, todayItems: 0, personalGoal: 0, personalItemGoal: 0 },
         purchaseSuggestions: [], // Restock recommendations
         recentAuditLog: [], // ADDED: For Profit Audit Report
         totalReceivable: 0,
@@ -540,10 +541,11 @@ export function DashboardPage({ user, userProfile, settings, isSalesMode, darkMo
                 const sellerUID = s.userId || s.sellerId || 'Sistema';
                 const userName = s.sellerName || s.userName || memberNames[sellerUID] || (sellerUID === 'Sistema' ? 'Venda Direta' : 'Vendedor');
 
-                if (!userMap[sellerUID]) userMap[sellerUID] = { name: userName, total: 0, profit: 0, sales: 0 };
+                if (!userMap[sellerUID]) userMap[sellerUID] = { id: sellerUID, name: userName, total: 0, profit: 0, sales: 0, items: 0 };
 
                 // Ensure numeric values
                 const saleTotal = parseFloat(s.total) || 0;
+                const saleItems = s.items?.reduce((acc, i) => acc + (parseFloat(i.quantity) || 1), 0) || 1;
 
                 // Calculate Profit just for reference (or mixed usage)
                 let calculatedProfit = 0;
@@ -561,9 +563,33 @@ export function DashboardPage({ user, userProfile, settings, isSalesMode, darkMo
                 userMap[sellerUID].total += saleTotal;
                 userMap[sellerUID].profit += calculatedProfit;
                 userMap[sellerUID].sales += 1;
+                userMap[sellerUID].items += saleItems;
             });
+
             // Sort by Total Revenue (High to Low)
-            const ranking = Object.values(userMap).sort((a, b) => b.total - a.total);
+            const sortedRanking = Object.values(userMap).sort((a, b) => b.total - a.total);
+            const rankingWithPos = sortedRanking.map((s, i) => ({ ...s, position: i + 1 }));
+
+            // Personal Stats for the logged user
+            const myId = user.uid;
+            const myPerformance = rankingWithPos.find(r => r.id === myId) || { name: userProfile?.name || 'Você', total: 0, profit: 0, sales: 0, items: 0, position: rankingWithPos.length + 1 };
+
+            // Today Sales for personal
+            const myTodayTotal = allMonthSales
+                .filter(s => {
+                    const sDate = getFirestoreDate(s.createdAt);
+                    const isToday = s.createdAt && isSameDay(sDate, new Date());
+                    return isToday && (s.userId === myId || s.sellerId === myId);
+                })
+                .reduce((acc, s) => acc + (s.total || 0), 0);
+
+            const myTodayItems = allMonthSales
+                .filter(s => {
+                    const sDate = getFirestoreDate(s.createdAt);
+                    const isToday = s.createdAt && isSameDay(sDate, new Date());
+                    return isToday && (s.userId === myId || s.sellerId === myId);
+                })
+                .reduce((acc, s) => acc + (s.items?.reduce((iAcc, i) => iAcc + (parseFloat(i.quantity) || 1), 0) || 1), 0);
 
             // --- AI/PURCHASE FORECAST ---
             const purchaseSuggestions = stockItems
@@ -603,7 +629,14 @@ export function DashboardPage({ user, userProfile, settings, isSalesMode, darkMo
                 dailyChart: chartData,
                 paymentMethods,
                 topSellingItems,
-                ranking,
+                ranking: rankingWithPos,
+                myStats: {
+                    ...myPerformance,
+                    todayTotal: myTodayTotal,
+                    todayItems: myTodayItems,
+                    personalGoal: parseFloat(userProfile?.monthlyGoal) || 0,
+                    personalItemGoal: parseInt(userProfile?.itemGoal) || 0
+                },
                 purchaseSuggestions,
                 recentAuditLog: allMonthSales
                     .sort((a, b) => getFirestoreDate(a.createdAt) - getFirestoreDate(b.createdAt))
@@ -746,7 +779,11 @@ export function DashboardPage({ user, userProfile, settings, isSalesMode, darkMo
                     color="bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400"
                 />
                 <div className="md:col-span-1">
-                    <GoalsWidget currentAmount={salesData.monthSales} userProfile={userProfile} goal={goal} />
+                    <GoalsWidget
+                        currentAmount={userProfile?.role === 'seller' ? salesData.myStats.total : salesData.monthSales}
+                        userProfile={userProfile}
+                        goal={userProfile?.role === 'seller' ? salesData.myStats.personalGoal : goal}
+                    />
                 </div>
 
                 {(userProfile?.role === 'owner' || userProfile?.role === 'admin') && (
@@ -778,6 +815,65 @@ export function DashboardPage({ user, userProfile, settings, isSalesMode, darkMo
                             color="bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400"
                         />
                     </>
+                )}
+            </div>
+
+            {/* Employee Focus Card (New Personal Performance Section) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+                <div className="bg-gradient-to-br from-indigo-600 to-blue-700 p-6 rounded-[2.5rem] text-white shadow-xl relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-white/20 transition-all" />
+                    <div className="relative z-10">
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-80 mb-4 flex items-center gap-2">
+                            <User className="w-3 h-3" /> Meu Desempenho (Mês)
+                        </p>
+                        <div className="flex items-end justify-between gap-4">
+                            <div>
+                                <h3 className="text-3xl font-black tracking-tight">{formatCurrency(salesData.myStats.total)}</h3>
+                                <p className="text-xs font-bold opacity-70 mt-1">{salesData.myStats.sales} vendas realizadas</p>
+                            </div>
+                            <div className="text-right">
+                                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/20 rounded-full text-[10px] font-black uppercase tracking-wider backdrop-blur-md border border-white/10">
+                                    <Trophy className="w-3 h-3 text-yellow-300" /> #{salesData.myStats.position} no Ranking
+                                </span>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4 mt-6 pt-6 border-t border-white/10">
+                            <div>
+                                <p className="text-[10px] font-bold uppercase opacity-60 mb-1">Items Vendidos</p>
+                                <p className="text-xl font-black">{salesData.myStats.items} <span className="text-[10px] opacity-60">un.</span></p>
+                            </div>
+                            <div>
+                                <p className="text-[10px] font-bold uppercase opacity-60 mb-1">Vendas Hoje</p>
+                                <p className="text-xl font-black">{formatCurrency(salesData.myStats.todayTotal)}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Additional Stats for Balance / Items for non-admins */}
+                {userProfile?.role === 'seller' && (
+                    <div className="bg-white dark:bg-slate-900 p-6 rounded-[2.5rem] border border-slate-100 dark:border-white/5 flex flex-col justify-center gap-4">
+                        <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-2xl bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 flex items-center justify-center">
+                                <ShoppingBag className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Itens Hoje</p>
+                                <h4 className="text-2xl font-black text-slate-800 dark:text-white">{salesData.myStats.todayItems} un.</h4>
+                            </div>
+                        </div>
+                        <div className="h-2 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden mt-2">
+                            <div
+                                className="h-full bg-orange-500 transition-all duration-1000"
+                                style={{ width: `${salesData.myStats.personalItemGoal > 0 ? Math.min(100, (salesData.myStats.items / salesData.myStats.personalItemGoal) * 100) : 0}%` }}
+                            />
+                        </div>
+                        <div className="flex justify-between items-center text-[10px] font-bold text-slate-500 uppercase tracking-tighter">
+                            <span>Meta de Itens: {salesData.myStats.personalItemGoal} un.</span>
+                            <span>{salesData.myStats.personalItemGoal > 0 ? Math.round((salesData.myStats.items / salesData.myStats.personalItemGoal) * 100) : 0}%</span>
+                        </div>
+                    </div>
                 )}
             </div>
 
@@ -1317,12 +1413,6 @@ export function DashboardPage({ user, userProfile, settings, isSalesMode, darkMo
                 </div>
             )}
 
-            {isInspectionModalOpen && (
-                <DeviceInspectionModal
-                    isOpen={isInspectionModalOpen}
-                    onClose={() => setIsInspectionModalOpen(false)}
-                />
-            )}
             {/* Internal Requests Alert Popup */}
             {showRequestsPopup && newRequestsAlert.length > 0 && (
                 <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-xl z-[999] flex items-center justify-center p-4 animate-in fade-in duration-500">

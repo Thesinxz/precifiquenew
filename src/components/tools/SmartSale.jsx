@@ -83,8 +83,14 @@ export function SmartSale({ user, userProfile, settings }) {
     // Dynamic Fee Calculation for Installments
     const getGrossPrice = (net, installments) => {
         if (!settings?.financial?.gateways?.length) return net;
-        const gateway = settings.financial.gateways[0];
+
+        // Find gateway based on active Id or fallback to first
+        const activeId = settings.financial.activeGatewayId;
+        const gateway = settings.financial.gateways.find(g => g.id === activeId) || settings.financial.gateways[0];
+
         const rates = gateway?.rates || {};
+
+        // IMPORTANT: We use 0 as default if the user hasn't explicitly set it to avoid "hidden" fees
         const nfRate = parseFloat(settings?.financial?.notaFiscalRate || 0);
 
         // Find rate for installments
@@ -97,18 +103,27 @@ export function SmartSale({ user, userProfile, settings }) {
             if (rates[key] !== undefined && rates[key] !== null && rates[key] !== '') {
                 rate = parseFloat(rates[key]);
             } else {
-                // Interpolation
-                const r1 = parseFloat(rates.credit1x || 2);
-                const r12 = parseFloat(rates.credit12x || 15);
+                // Interpolation logic
+                const r1 = parseFloat(rates.credit1x || 0);
+                const r12 = parseFloat(rates.credit12x || 0);
                 const max = parseInt(rates.maxInstallments) || 12;
-                const step = max > 1 ? (r12 - r1) / (max - 1) : 0;
-                rate = r1 + (step * (count - 1));
+
+                if (count <= max) {
+                    const step = max > 1 ? (r12 - r1) / (max - 1) : 0;
+                    rate = r1 + (step * (count - 1));
+                } else {
+                    // Extra extrapolation for 13x to 24x based on the slope of 1-12
+                    const step = max > 1 ? (r12 - r1) / (max - 1) : 0;
+                    rate = r12 + (step * (count - max));
+                }
             }
         }
 
+        // Gross Up formula: Gross = Net / (1 - (Rate + NF))
+        // If you don't want to include NF in the fees passed to the customer, set nfRate to 0 here
         const totalLoad = (rate + nfRate) / 100;
         const divisor = 1 - totalLoad;
-        if (divisor <= 0 || divisor >= 1) return net; // Avoid division by zero or negative results
+        if (divisor <= 0.01 || divisor >= 1) return net * (1 + (rate / 100)); // Fallback to simple markup
         return net / divisor;
     };
 
