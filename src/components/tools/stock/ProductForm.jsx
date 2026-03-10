@@ -50,8 +50,6 @@ export function ProductForm({ open, onClose, item, onSaved, orgId, userId, setti
         quantity: '1',
         description: '',
         imageUrl: '',
-        description: '',
-        imageUrl: '',
         showInCatalog: true,
         // Fiscal Data
         ncm: '',
@@ -77,7 +75,6 @@ export function ProductForm({ open, onClose, item, onSaved, orgId, userId, setti
             minQuantity: '1',
             quantity: '1',
             description: '',
-            imageUrl: '',
             imageUrl: '',
             showInCatalog: true,
             ncm: '',

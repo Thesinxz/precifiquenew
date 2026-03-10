@@ -1337,6 +1337,35 @@ export function SmartSale({ user, userProfile, settings }) {
                                                         {item.type === 'order' ? 'Vitrine' : 'Venda'}
                                                     </span>
                                                 </div>
+                                                <div className="mb-2">
+                                                    <p className="text-[10px] font-bold text-slate-500 line-clamp-2 uppercase tracking-tight leading-relaxed">
+                                                        {item.items?.map((i, idx) => {
+                                                            const details = [];
+                                                            const storage = i.storage || i.variant?.storage;
+                                                            const color = i.color || i.variant?.color;
+                                                            const condition = (i.condition || i.variant?.condition || '').toLowerCase();
+                                                            const battery = i.battery || i.variant?.battery;
+                                                            const imei = i.imei || i.variant?.imei;
+
+                                                            if (storage) details.push(storage);
+                                                            if (color) details.push(color);
+                                                            if (condition.includes('semi') || condition.includes('usado')) {
+                                                                details.push(`SEMI${battery ? ` ${battery}%` : ''}`);
+                                                            } else if (condition.includes('novo') || condition.includes('lacrado')) {
+                                                                details.push('LACRADO');
+                                                            }
+                                                            if (imei) details.push(`IMEI: ${imei}`);
+
+                                                            return (
+                                                                <span key={idx}>
+                                                                    <span className="text-indigo-600 dark:text-indigo-400 font-black">{i.name}</span>
+                                                                    {details.length > 0 && <span className="text-slate-400"> ({details.join(' • ')})</span>}
+                                                                    {idx < item.items.length - 1 && <span className="mx-2 text-slate-300">|</span>}
+                                                                </span>
+                                                            );
+                                                        }) || 'Sem itens detalhados'}
+                                                    </p>
+                                                </div>
                                                 <div className="flex items-center gap-3 text-[10px] font-bold text-slate-400 uppercase tracking-wide">
                                                     <span className="font-mono bg-slate-50 dark:bg-slate-950 px-1.5 rounded border border-slate-100 dark:border-white/10 text-slate-500 dark:text-slate-400">#{item.code || item.id.slice(-6)}</span>
                                                     <span>•</span>

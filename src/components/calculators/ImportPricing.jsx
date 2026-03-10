@@ -425,7 +425,6 @@ export function ImportPricing({ user, userProfile, settings, onAddToProposal, is
                 taxBRL,
                 stateTaxBRL,
                 insuranceBRL,
-                insuranceBRL,
                 shippingCostBRL: shipPYBRL,
                 finalCostBRL: finalBRL
             };
