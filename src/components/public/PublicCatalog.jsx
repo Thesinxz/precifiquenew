@@ -788,6 +788,9 @@ export function PublicCatalog({ organizationId, sellerId, userProfile }) {
                 // Priority 3: MacBooks/iPads (High Value Electronics)
                 if (catName.match(/macbook|ipad|tablet|notebook/) || prodName.match(/macbook|ipad/)) return 60;
 
+                // Priority 4: Perfumes
+                if (catName.match(/perfume|fragranc|cosmet/) || prodName.match(/perfume|parfum|fragranc|coloni|eau de|toilette/)) return 50;
+
                 return 0; // Others
             };
 
@@ -872,31 +875,41 @@ export function PublicCatalog({ organizationId, sellerId, userProfile }) {
         }
 
         const sections = [
-            { id: 'iphones', title: ' iPhones', items: [] },
-            { id: 'androids', title: 'Smartphones Android', items: [] },
-            { id: 'tablets', title: 'Tablets & iPads', items: [] },
-            { id: 'accessories', title: 'Acessórios & Wearables', items: [] },
-            { id: 'others', title: 'Outros Produtos', items: [] }
+            { id: 'iphones_new', title: '✨ iPhones Lacrados', items: [] },
+            { id: 'iphones_used', title: '📱 iPhones Seminovos', items: [] },
+            { id: 'androids', title: '🚀 Smartphones Android', items: [] },
+            { id: 'tablets', title: '📂 Tablets & iPads', items: [] },
+            { id: 'perfumes', title: '🌬️ Perfumes Importados', items: [] },
+            { id: 'accessories', title: '🔌 Acessórios & Wearables', items: [] },
+            { id: 'others', title: '💎 Outros Produtos', items: [] }
         ];
 
         groupedModels.forEach(model => {
             const name = (model.name || '').toLowerCase();
             const cat = (model.category || '').toLowerCase();
+            const cond = (model.condition || '').toLowerCase();
 
-            // 1. Check for Accessories / Wearables FIRST to avoid brand-name conflicts (e.g. Xiaomi Buds appearing as Android Phones)
+            // 1. Check for Accessories / Wearables FIRST
             const isAccessory = cat.match(/acess|capa|fone|carregador|cabo|pelicula|película|smartwatch|watch|pulseira|magsafe|tag|caixa de som|caixa som|tablet case|ipad case|iphone case|headphone|airpod|bud|ear/) ||
                                name.match(/fone|capa|pelicula|película|carregador|cabo|smartwatch|band|pulseira|magsafe|airtag|airpod|bud|ear|headphone|case|fonte|power|protetor/);
 
             if (isAccessory) {
-                sections[3].items.push(model);
+                sections[5].items.push(model);
             } else if (name.includes('iphone') || cat.includes('iphone')) {
-                sections[0].items.push(model);
+                // Split iPhone by Condition
+                if (cond === 'lacrado' || cond === 'novo') {
+                    sections[0].items.push(model);
+                } else {
+                    sections[1].items.push(model);
+                }
             } else if (name.match(/ipad|tablet|tab/) || cat.match(/ipad|tablet/)) {
-                sections[2].items.push(model);
-            } else if (name.match(/samsung|xiaomi|motorola|asus|lg|realme|infinix|poco|pixel|google|tecno|oukitel/) || cat.match(/celular|smartphone|android/)) {
-                sections[1].items.push(model);
-            } else {
+                sections[3].items.push(model);
+            } else if (name.match(/perfume|parfum|fragranc|coloni|colônia|eau de|toilette|scent|quasar|malbec|lily|elysee|hidratante|creme/) || cat.match(/perfume|fragranc|cosmet/)) {
                 sections[4].items.push(model);
+            } else if (name.match(/samsung|xiaomi|motorola|asus|lg|realme|infinix|poco|pixel|google|tecno|oukitel/) || cat.match(/celular|smartphone|android/)) {
+                sections[2].items.push(model);
+            } else {
+                sections[6].items.push(model);
             }
         });
 
@@ -1386,42 +1399,62 @@ export function PublicCatalog({ organizationId, sellerId, userProfile }) {
             {/* Stories-style Categories - Modern & Professional */}
             <div className="max-w-7xl mx-auto px-6 py-8 relative z-20 -mt-10">
                 <div className="flex items-center gap-4 md:gap-8 overflow-x-auto no-scrollbar pb-4 mask-linear-fade">
-                    {['Todos', ...new Set(items.map(i => i.category))].filter(Boolean).map((cat, i) => {
-                        let Icon = Sparkles;
-                        const c = cat.toLowerCase();
-                        if (c.includes('iphone') || c.includes('celular') || c.includes('android')) Icon = Smartphone;
-                        if (c.includes('mac') || c.includes('notebook') || c.includes('laptop')) Icon = Laptop;
-                        if (c.includes('pad') || c.includes('tablet')) Icon = Tablet;
-                        if (c.includes('watch') || c.includes('relogio')) Icon = Watch;
-                        if (c.includes('fone') || c.includes('airpod')) Icon = Headphones;
+                    {(() => {
+                        const rawCategories = [...new Set(items.map(i => i.category))].filter(Boolean);
+                        const categoryPriority = (name) => {
+                            const n = name.toLowerCase();
+                            if (n.includes('iphone lacrado')) return 1000;
+                            if (n.includes('iphone seminovo')) return 900;
+                            if (n.includes('iphone')) return 800;
+                            if (n.includes('celular') || n.includes('smartphone')) return 700;
+                            if (n.includes('android') || n.includes('samsung') || n.includes('xiaomi')) return 600;
+                            if (n.includes('tablet') || n.includes('ipad')) return 500;
+                            if (n.includes('perfume')) return 450;
+                            if (n.includes('watch') || n.includes('relogio')) return 400;
+                            if (n.includes('mac') || n.includes('notebook')) return 300;
+                            if (n.includes('acessorio') || n.includes('capa') || n.includes('fone')) return 100;
+                            return 200;
+                        };
 
-                        const isActive = activeCategory === cat;
+                        const sorted = ['Todos', ...rawCategories.sort((a, b) => categoryPriority(b) - categoryPriority(a))];
 
-                        return (
-                            <button
-                                key={cat}
-                                onClick={() => setActiveCategory(cat)}
-                                className="flex flex-col items-center gap-2 group min-w-[70px] cursor-pointer"
-                            >
-                                <div className={cn(
-                                    "w-16 h-16 md:w-20 md:h-20 rounded-full flex items-center justify-center transition-all duration-300 relative p-0.5",
-                                    isActive ? "bg-gradient-to-tr from-blue-500 to-fuchsia-500 scale-110 shadow-lg shadow-blue-500/20" : "bg-transparent hover:scale-105"
-                                )}>
+                        return sorted.map((cat, i) => {
+                            let Icon = Sparkles;
+                            const c = cat.toLowerCase();
+                            if (c.includes('iphone') || c.includes('celular') || c.includes('android')) Icon = Smartphone;
+                            if (c.includes('mac') || c.includes('notebook') || c.includes('laptop')) Icon = Laptop;
+                            if (c.includes('pad') || c.includes('tablet')) Icon = Tablet;
+                            if (c.includes('watch') || c.includes('relogio')) Icon = Watch;
+                            if (c.includes('fone') || c.includes('airpod')) Icon = Headphones;
+
+                            const isActive = activeCategory === cat;
+
+                            return (
+                                <button
+                                    key={cat}
+                                    onClick={() => setActiveCategory(cat)}
+                                    className="flex flex-col items-center gap-2 group min-w-[70px] cursor-pointer"
+                                >
                                     <div className={cn(
-                                        "w-full h-full rounded-full flex items-center justify-center border-2",
-                                        darkMode ? "bg-slate-900 border-white/10" : "bg-white border-slate-100",
-                                        isActive && "border-transparent bg-clip-padding"
+                                        "w-16 h-16 md:w-20 md:h-20 rounded-full flex items-center justify-center transition-all duration-300 relative p-0.5",
+                                        isActive ? "bg-gradient-to-tr from-blue-500 to-fuchsia-500 scale-110 shadow-lg shadow-blue-500/20" : "bg-transparent hover:scale-105"
                                     )}>
-                                        <Icon className={cn("w-6 h-6 md:w-8 md:h-8 transition-colors", isActive ? "text-blue-500" : "text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-200")} />
+                                        <div className={cn(
+                                            "w-full h-full rounded-full flex items-center justify-center border-2",
+                                            darkMode ? "bg-slate-900 border-white/10" : "bg-white border-slate-100",
+                                            isActive && "border-transparent bg-clip-padding"
+                                        )}>
+                                            <Icon className={cn("w-6 h-6 md:w-8 md:h-8 transition-colors", isActive ? "text-blue-500" : "text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-200")} />
+                                        </div>
                                     </div>
-                                </div>
-                                <span className={cn(
-                                    "text-[10px] font-bold uppercase tracking-widest transition-colors text-center w-full truncate px-1",
-                                    isActive ? "text-blue-500" : "text-slate-500 dark:text-slate-400"
-                                )}>{cat}</span>
-                            </button>
-                        )
-                    })}
+                                    <span className={cn(
+                                        "text-[10px] font-bold uppercase tracking-widest transition-colors text-center w-full truncate px-1",
+                                        isActive ? "text-blue-500" : "text-slate-500 dark:text-slate-400"
+                                    )}>{cat}</span>
+                                </button>
+                            );
+                        });
+                    })()}
                 </div>
 
                 {/* Search Bar & Visual Search */}

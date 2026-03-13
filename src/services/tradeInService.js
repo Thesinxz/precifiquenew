@@ -37,28 +37,44 @@ export const TradeInService = {
                     createdAt: serverTimestamp()
                 });
 
-                // 3. Process the Sale (Deduct Sold Items)
-                for (const item of saleData.items) {
-                    if (item.id) {
-                        const itemRef = doc(db, "stock", item.id);
-                        const itemDoc = await transaction.get(itemRef);
-                        if (itemDoc.exists()) {
-                            const newQty = (itemDoc.data().quantity || 0) - (item.quantity || 1);
-                            transaction.update(itemRef, { quantity: newQty });
+                // 3. Process the Sale (Deduct Sold Items) - Aggregated for safety
+                const itemGroups = saleData.items.reduce((acc, item) => {
+                    if (!item.id) return acc;
+                    if (!acc[item.id]) {
+                        acc[item.id] = { id: item.id, name: item.name, quantity: 0 };
+                    }
+                    acc[item.id].quantity += (parseInt(item.quantity) || 1);
+                    return acc;
+                }, {});
 
-                            // Log Sale Movement
-                            const saleMoveRef = doc(collection(db, "stockMovements"));
-                            transaction.set(saleMoveRef, {
-                                stockId: item.id,
-                                itemName: item.name,
-                                type: 'out',
-                                quantity: item.quantity || 1,
-                                reason: 'Venda com Troca',
-                                userId,
-                                organizationId: orgId,
-                                createdAt: serverTimestamp()
-                            });
-                        }
+                for (const id of Object.keys(itemGroups)) {
+                    const group = itemGroups[id];
+                    const itemRef = doc(db, "stock", id);
+                    const itemDoc = await transaction.get(itemRef);
+                    
+                    if (itemDoc.exists()) {
+                        const currentQty = parseInt(itemDoc.data().quantity) || 0;
+                        const newQty = currentQty - group.quantity;
+                        
+                        transaction.update(itemRef, { 
+                            quantity: Math.max(0, newQty),
+                            updatedAt: serverTimestamp() 
+                        });
+
+                        // Log Sale Movement
+                        const saleMoveRef = doc(collection(db, "stockMovements"));
+                        transaction.set(saleMoveRef, {
+                            stockId: id,
+                            itemName: group.name,
+                            type: 'out',
+                            quantity: group.quantity,
+                            previousQuantity: currentQty,
+                            newQuantity: newQty,
+                            reason: 'Venda com Troca',
+                            userId,
+                            organizationId: orgId,
+                            createdAt: serverTimestamp()
+                        });
                     }
                 }
 

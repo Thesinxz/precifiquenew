@@ -99,147 +99,175 @@ export const SalesService = {
                 profit = netAmount - totalCost;
                 console.log("DEBUG TRANSACTION: netAmount/profit", { netAmount, profit });
 
-                // --- START TRANSACTION READS ---
-                const stockUpdates = [];
-                for (const item of saleData.items) {
-                    const itemRef = doc(db, 'stock', item.id);
-                    const itemDoc = await transaction.get(itemRef);
-                    if (!itemDoc.exists()) {
-                        console.error("DEBUG TRANSACTION: Item not found", item.id);
-                        throw new Error(`Produto ${item.name} não encontrado no estoque.`);
+                // --- START TRANSACTION ---
+                await runTransaction(db, async (transaction) => {
+                    console.log("DEBUG TRANSACTION: Started for org", orgId);
+
+                    // 1. Group items by ID to handle duplicates and avoid multiple updates to same doc
+                    const itemGroups = saleData.items.reduce((acc, item) => {
+                        if (!item.id) return acc;
+                        if (!acc[item.id]) {
+                            acc[item.id] = {
+                                id: item.id,
+                                name: item.name,
+                                quantity: 0,
+                                item: item // Keep reference for metadata
+                            };
+                        }
+                        acc[item.id].quantity += (parseInt(item.quantity) || 1);
+                        return acc;
+                    }, {});
+
+                    const uniqueItemIds = Object.keys(itemGroups);
+                    const stockSnapshots = new Map();
+
+                    // --- START TRANSACTION READS ---
+                    for (const id of uniqueItemIds) {
+                        const itemRef = doc(db, 'stock', id);
+                        const itemDoc = await transaction.get(itemRef);
+                        
+                        if (!itemDoc.exists()) {
+                            console.error("DEBUG TRANSACTION: Item not found", id);
+                            throw new Error(`Produto ${itemGroups[id].name} não encontrado no estoque.`);
+                        }
+
+                        // Organization check
+                        if (itemDoc.data().organizationId && itemDoc.data().organizationId !== orgId) {
+                            console.error("DEBUG TRANSACTION: Org Mismatch", { itemOrg: itemDoc.data().organizationId, targetOrg: orgId });
+                            throw new Error(`Conflito de Organização: O produto ${itemGroups[id].name} pertence a outra organização.`);
+                        }
+
+                        stockSnapshots.set(id, itemDoc);
                     }
+                    
+                    console.log("DEBUG TRANSACTION: Reads complete", uniqueItemIds.length, "unique items");
 
-                    if (itemDoc.data().organizationId && itemDoc.data().organizationId !== orgId) {
-                        console.error("DEBUG TRANSACTION: Org Mismatch", { itemOrg: itemDoc.data().organizationId, targetOrg: orgId });
-                        throw new Error(`Conflito de Organização: O produto ${item.name} pertence a outra organização/loja.`);
-                    }
+                    // 2. Create Sale Record
+                    const saleRef = doc(collection(db, COLLECTION));
+                    const saleCode = generateReferenceCode('SALE');
+                    saleData.id = saleRef.id;
+                    saleData.code = saleCode; // Ensure code is persisted
+                    createdSaleId = saleRef.id;
 
-                    const currentQty = parseInt(itemDoc.data().quantity) || 0;
-                    if (currentQty < item.quantity) {
-                        console.error("DEBUG TRANSACTION: Insufficient stock", { name: item.name, currentQty, requestedQty: item.quantity });
-                        throw new Error(`Estoque insuficiente para ${item.name} (Disponível: ${currentQty})`);
-                    }
-                    stockUpdates.push({ ref: itemRef, newQty: currentQty - item.quantity, item });
-                }
-                console.log("DEBUG TRANSACTION: Reads complete", stockUpdates.length, "items");
+                    // Clean data for Firestore
+                    const { settings: _, ...cleanSaleData } = saleData;
 
-                // --- START TRANSACTION WRITES ---
-                // 2. Create Sale Record
-                const saleRef = doc(collection(db, COLLECTION));
-                saleData.id = saleRef.id; // Assign ID so loyalty and other services have it
-                createdSaleId = saleRef.id; // Capture the ID
-
-                // Clean data for Firestore (Avoid undefined and large temp objects)
-                const { settings: _, ...cleanSaleData } = saleData;
-
-                transaction.set(saleRef, {
-                    postSaleContacted: false,
-                    ...cleanSaleData,
-                    totalCost,
-                    feeAmount,
-                    netAmount,
-                    profit,
-                    code: generateReferenceCode('SALE'),
-                    userId,
-                    organizationId: orgId,
-                    createdAt: serverTimestamp(),
-                    status: 'completed'
-                });
-                console.log("DEBUG TRANSACTION: Sale record set", saleRef.id);
-
-                // 3. Update Stock
-                stockUpdates.forEach(update => {
-                    transaction.update(update.ref, {
-                        quantity: update.newQty,
-                        updatedAt: serverTimestamp()
-                    });
-                });
-                console.log("DEBUG TRANSACTION: Stock updates set (Qty only)");
-
-                // 4. Record Stock Movement
-                stockUpdates.forEach(update => {
-                    const item = update.item;
-                    const movementRef = doc(collection(db, 'stockMovements'));
-                    transaction.set(movementRef, {
-                        stockId: item.id,
-                        itemName: item.name,
-                        type: 'out',
-                        quantity: item.quantity,
-                        reason: 'Venda Finalizada',
-                        saleId: createdSaleId,
+                    transaction.set(saleRef, {
+                        ...cleanSaleData,
+                        postSaleContacted: false,
+                        code: saleCode,
                         userId,
                         organizationId: orgId,
-                        createdAt: serverTimestamp()
+                        createdAt: serverTimestamp(),
+                        updatedAt: serverTimestamp(),
+                        status: 'completed'
                     });
-                });
 
-                // 5. Process Payment Entries (Financials & Receivables)
-                const paymentEntries = saleData.paymentEntries || [{
-                    method: saleData.paymentMethod || 'pix',
-                    amount: saleData.total,
-                    installments: saleData.installments || 1
-                }];
+                    console.log("DEBUG TRANSACTION: Sale record set", saleRef.id);
 
-                for (const entry of paymentEntries) {
-                    const isImmediate = ['cash', 'pix', 'debit', 'transfer'].includes(entry.method);
-                    const installments = parseInt(entry.installments || 1);
-                    const isInstallmentCash = entry.method === 'cash' && installments > 1;
+                    // 3. Update Stock & Record Movements
+                    for (const id of uniqueItemIds) {
+                        const itemDoc = stockSnapshots.get(id);
+                        const group = itemGroups[id];
+                        const currentQty = parseInt(itemDoc.data().quantity) || 0;
+                        const qtyToDeduct = group.quantity;
 
-                    // A. Financial Movement (Immediate Liquidity)
-                    // Only for 1x Cash, Pix, Debit, Transfer
-                    if (isImmediate && !isInstallmentCash) {
-                        const moveRef = doc(collection(db, 'financialMovements'));
-                        transaction.set(moveRef, {
-                            description: `Venda #${saleData.code || '---'} (${entry.method.toUpperCase()})`,
-                            amount: entry.amount,
-                            category: 'Vendas',
-                            type: 'income',
-                            origin: 'sale',
-                            referenceId: createdSaleId,
+                        if (currentQty < qtyToDeduct) {
+                            console.error("DEBUG TRANSACTION: Insufficient stock", { name: group.name, currentQty, requested: qtyToDeduct });
+                            throw new Error(`Estoque insuficiente para ${group.name} (Disponível: ${currentQty})`);
+                        }
+
+                        const newQty = currentQty - qtyToDeduct;
+
+                        // A. Update Stock Doc
+                        transaction.update(itemDoc.ref, {
+                            quantity: newQty,
+                            updatedAt: serverTimestamp()
+                        });
+
+                        // B. Record Movement
+                        const movementRef = doc(collection(db, 'stockMovements'));
+                        transaction.set(movementRef, {
+                            stockId: id,
+                            productName: group.name,
+                            type: 'out',
+                            quantity: qtyToDeduct,
+                            previousQuantity: currentQty,
+                            newQuantity: newQty,
+                            reason: 'Venda',
+                            saleId: saleRef.id,
+                            saleCode: saleCode,
+                            userId,
                             organizationId: orgId,
-                            date: serverTimestamp(),
                             createdAt: serverTimestamp()
                         });
                     }
 
-                    // B. Receivables (Fiado / Dinheiro Parcelado / Cartão de Crédito)
-                    // Generates "Contas a Receber" entries
-                    const needsReceivable = entry.method === 'fiado' ||
-                        (entry.method === 'cash' && installments > 1) ||
-                        entry.method === 'credit' ||
-                        entry.method === 'card';
+                    console.log("DEBUG TRANSACTION: Stock and Movements set");
 
-                    if (needsReceivable) {
-                        const baseAmount = entry.amount / installments;
+                    // 4. Financial Records (Movements & Receivables)
+                    const paymentEntries = saleData.paymentEntries || [{
+                        method: saleData.paymentMethod || 'pix',
+                        amount: saleData.total,
+                        installments: saleData.installments || 1
+                    }];
 
-                        for (let i = 0; i < installments; i++) {
-                            const receivableRef = doc(collection(db, 'receivables'));
-                            let dueDate = new Date();
-                            if (entry.dueDate) {
-                                const parts = entry.dueDate.split('-');
-                                const baseDate = new Date(parts[0], parts[1] - 1, parts[2], 12, 0, 0);
-                                dueDate = new Date(baseDate);
-                                dueDate.setDate(baseDate.getDate() + (30 * i));
-                            } else {
-                                dueDate.setDate(dueDate.getDate() + (30 * (i + 1)));
-                            }
+                    for (const entry of paymentEntries) {
+                        const method = entry.method || 'pix';
+                        const amount = parseFloat(entry.amount);
+                        const installments = parseInt(entry.installments) || 1;
 
-                            transaction.set(receivableRef, {
+                        // A. Financial Movement
+                        if (['cash', 'pix', 'debit', 'transfer'].includes(method) && installments === 1) {
+                            const moveRef = doc(collection(db, 'financialMovements'));
+                            transaction.set(moveRef, {
+                                type: 'income',
+                                description: `Venda #${saleCode} (${method.toUpperCase()})`,
+                                amount: amount,
+                                category: 'Vendas',
+                                origin: 'sale',
+                                referenceId: saleRef.id,
                                 organizationId: orgId,
-                                customerName: saleData.client?.name || 'Cliente Não Identificado',
-                                description: `Venda #${saleData.code || '---'} (${entry.method === 'credit' ? 'Cartão' : entry.method.toUpperCase()}) - Parc. ${i + 1}/${installments}`,
-                                amount: baseAmount,
-                                dueDate: dueDate.toISOString().split('T')[0], // YYYY-MM-DD
-                                status: 'pending',
-                                saleId: createdSaleId,
-                                costCenterId: null,
-                                createdAt: serverTimestamp(),
-                                createdBy: userId,
-                                originalMethod: entry.method
+                                date: serverTimestamp(),
+                                createdAt: serverTimestamp()
                             });
                         }
+
+                        // B. Receivables
+                        const needsReceivable = entry.method === 'fiado' ||
+                            (entry.method === 'cash' && installments > 1) ||
+                            ['credit', 'card'].includes(entry.method);
+                            
+                        if (needsReceivable) {
+                            const baseAmount = amount / installments;
+                            for (let i = 0; i < installments; i++) {
+                                const receivableRef = doc(collection(db, 'receivables'));
+                                let dueDate = new Date();
+                                if (entry.dueDate) {
+                                    const parts = entry.dueDate.split('-');
+                                    const baseDate = new Date(parts[0], parts[1] - 1, parts[2], 12, 0, 0);
+                                    dueDate = new Date(baseDate);
+                                    dueDate.setDate(baseDate.getDate() + (30 * i));
+                                } else {
+                                    dueDate.setDate(dueDate.getDate() + (30 * (i + 1)));
+                                }
+
+                                transaction.set(receivableRef, {
+                                    organizationId: orgId,
+                                    customerName: saleData.client?.name || 'Consumidor',
+                                    description: `Venda #${saleCode} (${method.toUpperCase()}) - Parc. ${i + 1}/${installments}`,
+                                    amount: baseAmount,
+                                    dueDate: dueDate.toISOString().split('T')[0],
+                                    status: 'pending',
+                                    saleId: saleRef.id,
+                                    createdAt: serverTimestamp(),
+                                    createdBy: userId,
+                                    originalMethod: method
+                                });
+                            }
+                        }
                     }
-                }
+                });
             });
             console.log("DEBUG: Transaction committed successfully");
 
