@@ -34,6 +34,7 @@ export function ProductForm({ open, onClose, item, onSaved, orgId, userId, setti
     const [isGeneratingCopy, setIsGeneratingCopy] = useState(false);
     const [suggestions, setSuggestions] = useState([]);
     const [selectedOfficialModel, setSelectedOfficialModel] = useState(null);
+    const [manualMode, setManualMode] = useState({ storage: false, color: false });
     const [formData, setFormData] = useState({
         name: '',
         category: '',
@@ -59,29 +60,37 @@ export function ProductForm({ open, onClose, item, onSaved, orgId, userId, setti
     });
 
     useEffect(() => {
-        if (item) setFormData({ ...formData, ...item, showInCatalog: item.showInCatalog ?? true });
-        else setFormData({
-            name: '',
-            category: settings?.categories?.[0]?.name || '',
-            type: 'device',
-            storage: '',
-            color: '',
-            condition: 'seminovo',
-            batteryHealth: '100',
-            cost: '',
-            price: '',
-            imei: '',
-            barcode: '',
-            minQuantity: '1',
-            quantity: '1',
-            description: '',
-            imageUrl: '',
-            showInCatalog: true,
-            ncm: '',
-            cest: '',
-            origin: '0',
-            cfop: '5102'
-        });
+        if (item) {
+            setFormData({ ...formData, ...item, showInCatalog: item.showInCatalog ?? true });
+            // Detect if it's an official model on edit
+            const match = IPHONE_DATA.find(m => m.model.toLowerCase() === item.name?.toLowerCase());
+            if (match) setSelectedOfficialModel(match);
+        } else {
+            setFormData({
+                name: '',
+                category: settings?.categories?.[0]?.name || '',
+                type: 'device',
+                storage: '',
+                color: '',
+                condition: 'seminovo',
+                batteryHealth: '100',
+                cost: '',
+                price: '',
+                imei: '',
+                barcode: '',
+                minQuantity: '1',
+                quantity: '1',
+                description: '',
+                imageUrl: '',
+                showInCatalog: true,
+                ncm: '',
+                cest: '',
+                origin: '0',
+                cfop: '5102'
+            });
+            setSelectedOfficialModel(null);
+            setManualMode({ storage: false, color: false });
+        }
     }, [item, open, settings]);
 
     // Live Asset Preview
@@ -208,6 +217,13 @@ export function ProductForm({ open, onClose, item, onSaved, orgId, userId, setti
                                                 onChange={e => {
                                                     const val = e.target.value;
                                                     setFormData({ ...formData, name: val });
+                                                    
+                                                    // Clear official model if name changes significantly
+                                                    if (selectedOfficialModel && val.toLowerCase() !== selectedOfficialModel.model.toLowerCase()) {
+                                                        setSelectedOfficialModel(null);
+                                                        setManualMode({ storage: false, color: false });
+                                                    }
+
                                                     if (val.length >= 2) {
                                                         const matches = IPHONE_DATA.filter(m => m.model.toLowerCase().includes(val.toLowerCase()));
                                                         setSuggestions(matches);
@@ -239,6 +255,7 @@ export function ProductForm({ open, onClose, item, onSaved, orgId, userId, setti
                                                                 });
                                                                 setSelectedOfficialModel(m);
                                                                 setSuggestions([]);
+                                                                setManualMode({ storage: false, color: false });
                                                             }}
                                                             className="w-full text-left p-4 hover:bg-slate-50 dark:hover:bg-slate-900 rounded-2xl flex items-center justify-between transition-colors group"
                                                         >
@@ -337,23 +354,32 @@ export function ProductForm({ open, onClose, item, onSaved, orgId, userId, setti
                                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
                                     <div className="space-y-2">
                                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Armaz.</label>
-                                        {selectedOfficialModel ? (
-                                            <div className="flex flex-wrap gap-2">
-                                                {selectedOfficialModel.storage.map(s => (
-                                                    <button
-                                                        key={s}
-                                                        type="button"
-                                                        onClick={() => setFormData({ ...formData, storage: s })}
-                                                        className={cn(
-                                                            "px-3 py-3 rounded-2xl text-xs font-black transition-all border flex-1",
-                                                            formData.storage === s
-                                                                ? "bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-500/30"
-                                                                : "bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 text-slate-400 hover:border-indigo-200"
-                                                        )}
-                                                    >
-                                                        {s}
-                                                    </button>
-                                                ))}
+                                        {selectedOfficialModel && !manualMode.storage ? (
+                                            <div className="space-y-3">
+                                                <div className="flex flex-wrap gap-2">
+                                                    {selectedOfficialModel.storage.map(s => (
+                                                        <button
+                                                            key={s}
+                                                            type="button"
+                                                            onClick={() => setFormData({ ...formData, storage: s })}
+                                                            className={cn(
+                                                                "px-3 py-3 rounded-2xl text-xs font-black transition-all border flex-1",
+                                                                formData.storage === s
+                                                                    ? "bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-500/30"
+                                                                    : "bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 text-slate-400 hover:border-indigo-200"
+                                                            )}
+                                                        >
+                                                            {s}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                                <button 
+                                                    type="button" 
+                                                    onClick={() => setManualMode(prev => ({ ...prev, storage: true }))}
+                                                    className="text-[9px] font-black text-indigo-500 uppercase tracking-widest hover:underline"
+                                                >
+                                                    + Outro Armazenamento
+                                                </button>
                                             </div>
                                         ) : (
                                             <input
@@ -367,31 +393,40 @@ export function ProductForm({ open, onClose, item, onSaved, orgId, userId, setti
                                     </div>
                                     <div className="space-y-2 col-span-2 md:col-span-1">
                                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Cor Principal</label>
-                                        {selectedOfficialModel ? (
-                                            <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto custom-scrollbar pr-1">
-                                                {selectedOfficialModel.colors.map(colorName => (
-                                                    <button
-                                                        key={colorName}
-                                                        type="button"
-                                                        onClick={() => {
-                                                            const finalImg = getProductImage(selectedOfficialModel.model, colorName);
-                                                            setFormData({
-                                                                ...formData,
-                                                                color: colorName,
-                                                                imageUrl: finalImg || ''
-                                                            });
-                                                        }}
-                                                        className={cn(
-                                                            "p-2 rounded-xl flex items-center gap-2 transition-all border text-left group",
-                                                            formData.color === colorName
-                                                                ? "bg-indigo-50 dark:bg-indigo-900/20 border-indigo-500 ring-1 ring-indigo-500"
-                                                                : "bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 hover:bg-slate-50"
-                                                        )}
-                                                    >
-                                                        <div className="w-6 h-6 rounded-full border border-black/10 shadow-sm shrink-0" style={{ backgroundColor: getColorHex(colorName) }} />
-                                                        <span className={cn("text-[10px] font-bold leading-tight", formData.color === colorName ? "text-indigo-700 dark:text-indigo-300" : "text-slate-600 dark:text-slate-400")}>{colorName}</span>
-                                                    </button>
-                                                ))}
+                                        {selectedOfficialModel && !manualMode.color ? (
+                                            <div className="space-y-3">
+                                                <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto custom-scrollbar pr-1">
+                                                    {selectedOfficialModel.colors.map(colorName => (
+                                                        <button
+                                                            key={colorName}
+                                                            type="button"
+                                                            onClick={() => {
+                                                                const finalImg = getProductImage(selectedOfficialModel.model, colorName);
+                                                                setFormData({
+                                                                    ...formData,
+                                                                    color: colorName,
+                                                                    imageUrl: finalImg || ''
+                                                                });
+                                                            }}
+                                                            className={cn(
+                                                                "p-2 rounded-xl flex items-center gap-2 transition-all border text-left group",
+                                                                formData.color === colorName
+                                                                    ? "bg-indigo-50 dark:bg-indigo-900/20 border-indigo-500 ring-1 ring-indigo-500"
+                                                                    : "bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 hover:bg-slate-50"
+                                                            )}
+                                                        >
+                                                            <div className="w-6 h-6 rounded-full border border-black/10 shadow-sm shrink-0" style={{ backgroundColor: getColorHex(colorName) }} />
+                                                            <span className={cn("text-[10px] font-bold leading-tight", formData.color === colorName ? "text-indigo-700 dark:text-indigo-300" : "text-slate-600 dark:text-slate-400")}>{colorName}</span>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                                <button 
+                                                    type="button" 
+                                                    onClick={() => setManualMode(prev => ({ ...prev, color: true }))}
+                                                    className="text-[9px] font-black text-indigo-500 uppercase tracking-widest hover:underline"
+                                                >
+                                                    + Outra Cor
+                                                </button>
                                             </div>
                                         ) : (
                                             <input

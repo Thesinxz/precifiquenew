@@ -272,20 +272,8 @@ export function PublicCatalog({ organizationId, sellerId, userProfile }) {
             if ((i.quantity || 0) <= 0) return false;
             const itemCategory = (i.category || '').toLowerCase();
             const itemName = (i.name || '').toLowerCase();
-            const isAccessory = itemCategory.includes('acess') ||
-                itemName.includes('capa') ||
-                itemName.includes('película') ||
-                itemName.includes('pelicula') ||
-                itemName.includes('carregador') ||
-                itemName.includes('fone') ||
-                itemName.includes('fone de ouvido') ||
-                itemName.includes('cabo') ||
-                itemName.includes('fonte') ||
-                itemName.includes('pulseira') ||
-                itemName.includes('airpod') ||
-                itemName.includes('headphone') ||
-                itemName.includes('case') ||
-                itemName.includes('protector');
+            const isAccessory = itemCategory.match(/acess|capa|fone|carregador|cabo|pelicula|película|smartwatch|watch|pulseira|magsafe|tag|headphone|airpod|bud|ear/) ||
+                               itemName.match(/fone|capa|pelicula|película|carregador|cabo|smartwatch|band|pulseira|magsafe|airtag|airpod|bud|ear|headphone|case|fonte|power|protetor/);
             const isSameCategory = itemCategory === currentCategory && !itemName.includes(currentName);
             return isAccessory || isSameCategory;
         })
@@ -780,23 +768,27 @@ export function PublicCatalog({ organizationId, sellerId, userProfile }) {
 
             // Helper to get Category Priority Score
             const getCatScore = (group) => {
-                // Find category object from ID
-                const catObj = settings?.categories?.find(c => c.id === group.category);
-                const catName = (catObj?.name || '').toLowerCase();
-                const prodName = (group.name || '').toLowerCase(); // Fallback to name if generic category
+                const catName = (group.category || '').toLowerCase();
+                const prodName = (group.name || '').toLowerCase();
 
-                // Priority 1: iPhones (Highest) - With Release Order Logic
+                // Detect accessories first - they should ALWAYS have the lowest priority score (0)
+                // even if they belong to a brand like Xiaomi or Samsung
+                const isAccessory = catName.match(/acess|capa|fone|carregador|cabo|pelicula|película|smartwatch|watch|pulseira|magsafe|tag|headphone|airpod|bud|ear/) ||
+                                   prodName.match(/fone|capa|pelicula|película|carregador|cabo|smartwatch|band|pulseira|magsafe|airtag|airpod|bud|ear|headphone|case|fonte/);
+                
+                if (isAccessory) return 0;
+
+                // Priority 1: iPhones (Highest)
                 if (catName.includes('iphone') || prodName.includes('iphone')) return 100;
 
-                // Priority 2: Other Phones (Xiaomi, Samsung, Moto, etc.)
-                // Including generic terms like 'celular' or 'smartphone'
-                if (catName.match(/xiaomi|samsung|motorola|realme|asus|celular|smartphone/) ||
-                    prodName.match(/xiaomi|samsung|motorola|realme|asus/)) return 80;
+                // Priority 2: Other Phones (Androids)
+                if (catName.match(/samsung|xiaomi|motorola|realme|asus|lg|poco|pixel|google|tecno|oukitel|celular|smartphone|android/) ||
+                    prodName.match(/samsung|xiaomi|motorola|realme|asus|lg|poco|pixel|google|tecno|oukitel/)) return 80;
 
                 // Priority 3: MacBooks/iPads (High Value Electronics)
                 if (catName.match(/macbook|ipad|tablet|notebook/) || prodName.match(/macbook|ipad/)) return 60;
 
-                return 0; // Accessories, Perfumes, Others (Lowest)
+                return 0; // Others
             };
 
             // Priority 0: Has Stock (Strict Requirement: Esgotado vem por último)
@@ -891,14 +883,18 @@ export function PublicCatalog({ organizationId, sellerId, userProfile }) {
             const name = (model.name || '').toLowerCase();
             const cat = (model.category || '').toLowerCase();
 
-            if (name.includes('iphone') || cat.includes('iphone')) {
+            // 1. Check for Accessories / Wearables FIRST to avoid brand-name conflicts (e.g. Xiaomi Buds appearing as Android Phones)
+            const isAccessory = cat.match(/acess|capa|fone|carregador|cabo|pelicula|película|smartwatch|watch|pulseira|magsafe|tag|caixa de som|caixa som|tablet case|ipad case|iphone case|headphone|airpod|bud|ear/) ||
+                               name.match(/fone|capa|pelicula|película|carregador|cabo|smartwatch|band|pulseira|magsafe|airtag|airpod|bud|ear|headphone|case|fonte|power|protetor/);
+
+            if (isAccessory) {
+                sections[3].items.push(model);
+            } else if (name.includes('iphone') || cat.includes('iphone')) {
                 sections[0].items.push(model);
             } else if (name.match(/ipad|tablet|tab/) || cat.match(/ipad|tablet/)) {
                 sections[2].items.push(model);
-            } else if (name.match(/samsung|xiaomi|motorola|asus|lg|realme|infinix|pocophone/) || cat.match(/celular|smartphone|android/)) {
+            } else if (name.match(/samsung|xiaomi|motorola|asus|lg|realme|infinix|poco|pixel|google|tecno|oukitel/) || cat.match(/celular|smartphone|android/)) {
                 sections[1].items.push(model);
-            } else if (cat.includes('acess') || cat.includes('capa') || cat.includes('fone') || cat.includes('carregador') || cat.includes('cabo') || cat.includes('película') || cat.includes('smartwatch') || cat.includes('watch')) {
-                sections[3].items.push(model);
             } else {
                 sections[4].items.push(model);
             }
