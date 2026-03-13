@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
     Search, Plus, LayoutGrid, List, Filter, History, Trash2, Smartphone, Wrench,
-    Loader2, Box, Wand2, FileDown, Sparkles, Tag
+    Loader2, Box, Wand2, FileDown, Sparkles, Tag, Tags
 } from 'lucide-react';
 import { StockService } from '../../../services/stockService';
 import { useToast } from '../../ui/Toast';
