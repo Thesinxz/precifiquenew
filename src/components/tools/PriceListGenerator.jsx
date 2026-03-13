@@ -8,7 +8,7 @@ import { StockService } from '../../services/stockService';
 import { useToast } from '../ui/Toast';
 import { cn, formatCurrency, parsePrice } from '../../lib/utils';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 
 export function PriceListGenerator({ user, userProfile, settings }) {
     const { showToast } = useToast();
@@ -143,18 +143,41 @@ export function PriceListGenerator({ user, userProfile, settings }) {
             if ((item.quantity || 0) <= 0) return false;
 
             return true;
-        }).sort((a, b) => (parsePrice(b.price) || 0) - (parsePrice(a.price) || 0)); // Sort by price desc
+        }).sort((a, b) => {
+            const getPrice = (val) => {
+                if (typeof val === 'number') return val;
+                if (!val) return 0;
+                const str = String(val).replace('R$', '').trim();
+                if (str.includes('.') && !str.includes(',')) {
+                    const parts = str.split('.');
+                    if (parts.length === 2 && parts[1].length !== 3) return parseFloat(str) || 0;
+                }
+                return parsePrice(val);
+            };
+            return (getPrice(b.price) || 0) - (getPrice(a.price) || 0);
+        });
     }, [items, selectedSegment, selectedBrands, selectedCondition, searchTerm, settings]);
 
     // Format helpers
     const fMoney = (val) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
+
+    const getSafePrice = (val) => {
+        if (typeof val === 'number') return val;
+        if (!val) return 0;
+        const str = String(val).replace('R$', '').trim();
+        if (str.includes('.') && !str.includes(',')) {
+            const parts = str.split('.');
+            if (parts.length === 2 && parts[1].length !== 3) return parseFloat(str) || 0;
+        }
+        return parsePrice(val);
+    };
 
     // 4. Generate Text Preview
     const previewText = useMemo(() => {
         let text = `${headerText}\n━━━━━━━━━━━━━━━━━━━━━\n\n`;
 
         filteredItems.forEach(item => {
-            const price = parsePrice(item.price);
+            const price = getSafePrice(item.price);
             let conditionStr = '';
             if (showCondition) {
                 const c = item.condition || 'Seminovo';
@@ -219,7 +242,7 @@ export function PriceListGenerator({ user, userProfile, settings }) {
             const head = [['Produto', showCondition ? 'Condição' : null, 'À vista', ...sortedInst.map(i => `${i}x`)].filter(Boolean)];
             
             const body = filteredItems.map(item => {
-                const price = parsePrice(item.price);
+                const price = getSafePrice(item.price);
                 const nameStr = item.name + (item.storage ? ` ${item.storage}` : '');
                 const row = [nameStr];
                 
@@ -239,7 +262,7 @@ export function PriceListGenerator({ user, userProfile, settings }) {
                 return row;
             });
 
-            doc.autoTable({
+            autoTable(doc, {
                 startY: 55,
                 head: head,
                 body: body,
