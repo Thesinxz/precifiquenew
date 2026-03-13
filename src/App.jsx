@@ -29,6 +29,7 @@ const SalesReports = lazy(() => import("./components/tools/SalesReports").then(m
 const StockPage = lazy(() => import("./components/tools/StockPage").then(m => ({ default: m.StockPage || m.default })));
 const ClientsPage = lazy(() => import("./components/tools/ClientsPage").then(m => ({ default: m.ClientsPage })));
 const MarketingPage = lazy(() => import("./components/tools/MarketingPage").then(m => ({ default: m.MarketingPage })));
+const PriceListGenerator = lazy(() => import("./components/tools/PriceListGenerator").then(m => ({ default: m.PriceListGenerator })));
 const InboxPage = lazy(() => import("./components/tools/InboxPage").then(m => ({ default: m.InboxPage })));
 const PublicProposal = lazy(() => import("./components/public/PublicProposal").then(m => ({ default: m.PublicProposal })));
 const PublicCatalog = lazy(() => import("./components/public/PublicCatalog").then(m => ({ default: m.PublicCatalog })));
@@ -276,6 +277,7 @@ function AppContent() {
             <Route path="ocr" element={<MassPricing settings={appSettings} />} />
             <Route path="import" element={<ImportPricing user={user} userProfile={userProfile} settings={appSettings} isSalesMode={isSalesMode} />} />
             <Route path="marketing" element={<MarketingPage user={user} userProfile={userProfile} settings={appSettings} />} />
+            <Route path="price-list" element={<PriceListGenerator user={user} userProfile={userProfile} settings={appSettings} />} />
             <Route path="audit" element={<TaxReconciliation settings={appSettings} />} />
             <Route path="reverse" element={<ReversePricing user={user} userProfile={userProfile} settings={appSettings} />} />
             <Route path="lab" element={<TechLab user={user} userProfile={userProfile} settings={appSettings} darkMode={darkMode} />} />

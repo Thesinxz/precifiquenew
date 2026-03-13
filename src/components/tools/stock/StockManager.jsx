@@ -6,6 +6,7 @@ import {
 import { StockService } from '../../../services/stockService';
 import { useToast } from '../../ui/Toast';
 import { cn, formatCurrency, parsePrice } from '../../../lib/utils';
+import { useNavigate } from 'react-router-dom';
 
 import { getProductImage } from '../../../lib/data/iphoneData';
 
@@ -25,6 +26,7 @@ export function StockManager({ user, userProfile, settings, isSalesMode }) {
     const { showToast } = useToast();
     const orgId = userProfile?.organizationId || user?.uid;
     const userId = user?.uid;
+    const navigate = useNavigate();
 
     // Core States
     const [items, setItems] = useState([]);
@@ -352,12 +354,23 @@ export function StockManager({ user, userProfile, settings, isSalesMode }) {
                 </button>
                 <button
                     onClick={() => handlePrintLabels(filteredItems)}
-                    className="flex items-center gap-2 px-6 py-3 bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl text-slate-500 dark:text-slate-400 rounded-2xl text-[10px] font-black uppercase tracking-widest border border-white/20 dark:border-white/10 hover:border-indigo-500/30 hover:bg-white/60 transition-all shadow-sm"
+                    className="flex items-center gap-2 px-6 py-3 bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl text-slate-500 dark:text-slate-400 rounded-2xl text-[10px] font-black uppercase tracking-widest border border-white/20 dark:border-white/10 hover:border-emerald-500/30 hover:bg-white/60 transition-all shadow-sm"
                 >
                     <Tag className="w-4 h-4 text-emerald-500" /> Etiquetas Térmicas
                 </button>
                 <button
-                    className="flex items-center gap-2 px-6 py-3 bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl text-slate-500 dark:text-slate-400 rounded-2xl text-[10px] font-black uppercase tracking-widest border border-white/20 dark:border-white/10 hover:border-indigo-500/30 hover:bg-white/60 transition-all shadow-sm"
+                    onClick={() => {
+                        const params = new URLSearchParams();
+                        if (searchTerm) params.set('q', searchTerm);
+                        if (filterLowStock) params.set('low', '1');
+                        navigate(`/dashboard/price-list?${params.toString()}`);
+                    }}
+                    className="flex items-center gap-2 px-6 py-3 bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl text-slate-500 dark:text-slate-400 rounded-2xl text-[10px] font-black uppercase tracking-widest border border-white/20 dark:border-white/10 hover:border-purple-500/30 hover:bg-white/60 transition-all shadow-sm"
+                >
+                    <Tags className="w-4 h-4 text-purple-500" /> Gerar Lista de Preços
+                </button>
+                <button
+                    className="flex items-center gap-2 px-6 py-3 bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl text-slate-500 dark:text-slate-400 rounded-2xl text-[10px] font-black uppercase tracking-widest border border-white/20 dark:border-white/10 hover:border-blue-500/30 hover:bg-white/60 transition-all shadow-sm"
                 >
                     <FileDown className="w-4 h-4 text-blue-500" /> Exportar Planilha
                 </button>

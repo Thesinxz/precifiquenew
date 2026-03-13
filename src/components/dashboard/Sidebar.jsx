@@ -70,6 +70,7 @@ const MENU_ITEMS = [
             { id: 'inbox', label: 'Mensagens / Chat', icon: MessageSquare },
             { id: 'proposal', label: 'Orçamentos (PDF)', icon: FileText, badge: 'proposalCount' },
             { id: 'marketing', label: 'Gerador Instagram', icon: Instagram },
+            { id: 'price_list', label: 'Lista de Preços', icon: Tags },
         ]
     },
     {
@@ -298,6 +299,7 @@ export function Sidebar({ currentView, userProfile, isMobileOpen, setIsMobileOpe
                                                         'mass': '/dashboard/ocr',
                                                         'import': '/dashboard/import',
                                                         'marketing': '/dashboard/marketing',
+                                                        'price_list': '/dashboard/price-list',
                                                         'audit': '/dashboard/audit',
                                                         'reverse': '/dashboard/reverse',
                                                         'stock': '/dashboard/stock',
