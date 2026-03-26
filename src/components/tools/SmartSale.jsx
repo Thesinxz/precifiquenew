@@ -24,6 +24,7 @@ export function SmartSale({ user, userProfile, settings }) {
     const [view, setView] = useState('list'); // 'list' | 'new-sale'
     const [isLoading, setIsLoading] = useState(false);
     const { showToast } = useToast();
+    const effectiveOrgId = userProfile?.role === 'owner' ? (userProfile?.uid || user?.uid) : userProfile?.organizationId;
 
     // --- New Sale State ---
     const [step, setStep] = useState(1); // 1: Client, 2: Products, 3: Payment
@@ -160,7 +161,7 @@ export function SmartSale({ user, userProfile, settings }) {
         e.preventDefault();
         setIsLoading(true);
         try {
-            const orgId = userProfile?.organizationId || user.uid;
+            const orgId = effectiveOrgId;
             const price = parseFloat(quickProductData.price) || 0;
             const cost = parseFloat(quickProductData.cost) || 0;
 
@@ -211,11 +212,14 @@ export function SmartSale({ user, userProfile, settings }) {
     }, [user]);
 
     useEffect(() => {
-        if (userProfile?.role === 'owner' || userProfile?.role === 'admin' || userProfile?.role === 'seller') {
-            const orgId = userProfile.organizationId || user.uid;
-            UserService.getTeam(orgId).then(t => setTeamMembers(t || []));
+        if (effectiveOrgId) {
+            console.log("DEBUG: SmartSale fetching team for orgId:", effectiveOrgId);
+            UserService.getTeam(effectiveOrgId).then(t => {
+                console.log("DEBUG: SmartSale team fetched:", t?.length || 0, "members");
+                setTeamMembers(t || []);
+            });
         }
-    }, [userProfile, user]);
+    }, [effectiveOrgId]);
 
     // --- State Persistence (Prevent Data Loss) ---
     useEffect(() => {
@@ -311,7 +315,7 @@ export function SmartSale({ user, userProfile, settings }) {
         if (!silent) console.log("DEBUG: loadInitialData started");
         setIsLoading(true);
         try {
-            const orgId = userProfile?.organizationId || user.uid;
+            const orgId = effectiveOrgId;
             if (!silent) console.log("DEBUG: Fetching with orgId", orgId);
 
             // Listen for changes or just fetch
@@ -363,7 +367,7 @@ export function SmartSale({ user, userProfile, settings }) {
             // Fallback for missing index on orders
             if (e.code === 'failed-precondition') {
                 console.warn("DEBUG: Falling back to simple query for orders due to missing index");
-                const orgId = userProfile?.organizationId || user.uid;
+                const orgId = effectiveOrgId;
                 const { getDocs, query, collection, where } = await import('firebase/firestore');
                 const qSimple = query(collection(db, 'orders'), where("organizationId", "==", orgId), where("status", "==", "pending"));
                 const snap = await getDocs(qSimple);
@@ -466,7 +470,7 @@ export function SmartSale({ user, userProfile, settings }) {
 
             const sellerObj = selectedSellerId === user.uid
                 ? { name: userProfile?.name || user.email?.split('@')[0] || 'Vendedor', id: user.uid }
-                : teamMembers.find(m => m.id === selectedSellerId) || { name: 'Vendedor', id: selectedSellerId };
+                : teamMembers.find(m => (m.id === selectedSellerId || m.uid === selectedSellerId)) || { name: 'Vendedor', id: selectedSellerId };
 
             const saleData = {
                 client: {
@@ -523,7 +527,7 @@ export function SmartSale({ user, userProfile, settings }) {
             console.log("DEBUG: Prepared saleData", saleData);
 
             // 1. Create Sale (Handles stock and everything)
-            const orgId = userProfile?.organizationId || user.uid;
+            const orgId = effectiveOrgId;
 
             // CRITICAL VALIDATION: If user is staff/admin but organizationId is missing, ABORT to prevent "Permission Denied" (wrong org context)
             if (userProfile?.role !== 'owner' && userProfile?.role !== 'user' && !userProfile?.organizationId) {
@@ -613,7 +617,7 @@ export function SmartSale({ user, userProfile, settings }) {
 
         setIsLoading(true);
         try {
-            const orgId = userProfile?.organizationId || user.uid;
+            const orgId = effectiveOrgId;
             if (!orgId) {
                 throw new Error("ID da organização não encontrado");
             }
@@ -938,7 +942,7 @@ export function SmartSale({ user, userProfile, settings }) {
         e.preventDefault();
         setIsLoading(true);
         try {
-            const orgId = userProfile?.organizationId || user.uid;
+            const orgId = effectiveOrgId;
             const checklistSummary = Object.entries(labEntryData.checklist)
                 .filter(([_, val]) => val)
                 .map(([key, _]) => key.toUpperCase())
@@ -1039,7 +1043,29 @@ export function SmartSale({ user, userProfile, settings }) {
                     )}
                 </div>
 
-                {/* B. Payment Methods Grid - Simplified for Sidebar */}
+                {/* B. Salesperson Selection (New) */}
+                {teamMembers.length > 0 && (
+                    <div className="bg-white dark:bg-slate-900/40 p-4 rounded-[1.5rem] border border-slate-100 dark:border-white/5 animate-in slide-in-from-bottom-2 fade-in">
+                        <label className="text-[9px] font-black uppercase text-slate-400 tracking-widest mb-2 block">Vendedor Responsável</label>
+                        <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center text-indigo-600">
+                                <Users className="w-4 h-4" />
+                            </div>
+                            <select
+                                className="flex-1 bg-transparent border-none outline-none font-bold text-xs text-slate-700 dark:text-slate-200 cursor-pointer"
+                                value={selectedSellerId || user?.uid}
+                                onChange={(e) => setSelectedSellerId(e.target.value)}
+                            >
+                                <option value={user?.uid}>Eu ({userProfile?.name || 'Admin'})</option>
+                                {teamMembers.filter(m => m.id !== user?.uid && m.uid !== user?.uid).map(member => (
+                                    <option key={member.id} value={member.id || member.uid}>{member.name}</option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+                )}
+
+                {/* C. Payment Methods Grid - Simplified for Sidebar */}
                 {cart.length > 0 && remainingBalance > 0.01 && (
                     <div className="grid grid-cols-2 gap-2 animate-in slide-in-from-bottom-2 fade-in">
                         {[
@@ -2224,7 +2250,7 @@ export function SmartSale({ user, userProfile, settings }) {
                                         const saleToEdit = { ...lastSale };
                                         setIsLoading(true);
                                         try {
-                                            const orgId = userProfile?.organizationId || user.uid;
+                                            const orgId = effectiveOrgId;
                                             await SalesService.cancelSale(saleToEdit.id, orgId);
                                             setCart(saleToEdit.items.map(i => ({ ...i, sellingPrice: i.price, quantity: i.quantity })));
                                             setSelectedClient(saleToEdit.client);
@@ -2243,7 +2269,7 @@ export function SmartSale({ user, userProfile, settings }) {
                                         if (!confirm("Tem certeza que deseja cancelar esta venda?")) return;
                                         setIsLoading(true);
                                         try {
-                                            const orgId = userProfile?.organizationId || user.uid;
+                                            const orgId = effectiveOrgId;
                                             await SalesService.cancelSale(lastSale.id, orgId);
                                             setShowPostSaleModal(false);
                                             showToast("Venda cancelada com sucesso!", "success");
@@ -2388,7 +2414,7 @@ export function SmartSale({ user, userProfile, settings }) {
                                             const saleToEdit = { ...selectedSale };
                                             setIsLoading(true);
                                             try {
-                                                const orgId = userProfile?.organizationId || user.uid;
+                                                const orgId = effectiveOrgId;
                                                 await SalesService.cancelSale(saleToEdit.id, orgId);
 
                                                 // Put items back in cart
@@ -2458,7 +2484,7 @@ export function SmartSale({ user, userProfile, settings }) {
                                         value={editingSale.sellerId || ''}
                                         onChange={(e) => {
                                             const selId = e.target.value;
-                                            const selName = teamMembers.find(m => m.id === selId)?.name || 'Vendedor';
+                                            const selName = teamMembers.find(m => (m.id === selId || m.uid === selId))?.name || 'Vendedor';
                                             setEditingSale({ ...editingSale, sellerId: selId, sellerName: selName });
                                         }}
                                     >

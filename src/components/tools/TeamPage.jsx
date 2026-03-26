@@ -54,7 +54,8 @@ export function TeamPage({ userProfile }) {
     }, [isInviteOpen, isEditingMember]);
 
     const { showToast } = useToast();
-    const orgId = userProfile?.organizationId || (userProfile?.role === 'owner' ? userProfile?.uid : null);
+    const isOwner = userProfile?.role === 'owner';
+    const orgId = isOwner ? (userProfile?.uid || userProfile?.id) : userProfile?.organizationId;
 
     useEffect(() => {
         if (orgId) {

@@ -27,32 +27,34 @@ export const SalesService = {
         try {
             let createdSaleId = null;
             await runTransaction(db, async (transaction) => {
-                console.log("DEBUG TRANSACTION: Started");
-                // 1. Calculate Finances if not provided
+                console.log("DEBUG TRANSACTION: Started for org", orgId);
+                
+                // 1. Calculate Finances (Internal safety check)
                 let totalCost = saleData.totalCost;
                 let feeAmount = saleData.feeAmount;
-                let netAmount = saleData.netAmount;
-                let profit = saleData.profit;
 
                 if (totalCost === undefined) {
                     totalCost = saleData.items.reduce((acc, item) => acc + (item.cost || 0) * (item.quantity || 1), 0);
                 }
-                console.log("DEBUG TRANSACTION: totalCost", totalCost);
 
                 if (feeAmount === undefined) {
                     let totalFees = 0;
-                    const entries = saleData.paymentEntries || [{ method: saleData.paymentMethod || 'pix', amount: saleData.total, installments: saleData.installments || 1 }];
+                    const entries = saleData.paymentEntries || [{ 
+                        method: saleData.paymentMethod || 'pix', 
+                        amount: saleData.total, 
+                        installments: saleData.installments || 1 
+                    }];
 
                     for (const entry of entries) {
                         let entryFeeRate = 0;
-                        if (entry.method === 'pix' || entry.method === 'cash' || entry.method === 'trade_in' || entry.method === 'transfer') {
+                        if (['pix', 'cash', 'trade_in', 'transfer'].includes(entry.method)) {
                             const hasIphone = saleData.items.some(item => {
                                 const cat = (item.category || "").toUpperCase();
                                 const name = (item.name || "").toUpperCase();
                                 return cat.includes("IPHONE") || name.includes("IPHONE");
                             });
                             entryFeeRate = (hasIphone && entry.method === 'pix') ? 0.0199 : 0;
-                        } else if (entry.method === 'card' || entry.method === 'credit' || entry.method === 'debit') {
+                        } else if (['card', 'credit', 'debit'].includes(entry.method)) {
                             const installments = entry.installments || 1;
                             let maxRate = 0;
 
@@ -68,23 +70,17 @@ export const SalesService = {
                                     const inst = parseInt(installments) || 1;
 
                                     if (Array.isArray(gateway.rates)) {
-                                        // Legacy Array Support
                                         const rateObj = gateway.rates.find(r => parseInt(r.installments) === inst);
                                         rate = rateObj ? Number(rateObj.rate) : 0;
                                     } else {
-                                        // Object Support (New Standard)
                                         if (entry.method === 'debit') {
                                             rate = Number(gateway.rates.debit || 0);
                                         } else {
-                                            // Credit Logic
                                             const key = `credit${inst}x`;
                                             rate = Number(gateway.rates[key] || 0);
                                         }
                                     }
-
                                     if (rate > maxRate) maxRate = rate;
-                                } else {
-                                    console.warn("DEBUG: No gateway/rates found for item:", item.name);
                                 }
                             });
                             entryFeeRate = maxRate / 100;
@@ -93,185 +89,136 @@ export const SalesService = {
                     }
                     feeAmount = totalFees;
                 }
-                console.log("DEBUG TRANSACTION: feeAmount", feeAmount);
 
-                netAmount = (saleData.total || 0) - feeAmount;
-                profit = netAmount - totalCost;
-                console.log("DEBUG TRANSACTION: netAmount/profit", { netAmount, profit });
+                const netAmount = (saleData.total || 0) - feeAmount;
+                const profit = netAmount - totalCost;
 
-                // --- START TRANSACTION ---
-                await runTransaction(db, async (transaction) => {
-                    console.log("DEBUG TRANSACTION: Started for org", orgId);
+                const saleCode = saleData.code || generateReferenceCode('SALE');
 
-                    // 1. Group items by ID to handle duplicates and avoid multiple updates to same doc
-                    const itemGroups = saleData.items.reduce((acc, item) => {
-                        if (!item.id) return acc;
-                        if (!acc[item.id]) {
-                            acc[item.id] = {
-                                id: item.id,
-                                name: item.name,
-                                quantity: 0,
-                                item: item // Keep reference for metadata
-                            };
-                        }
-                        acc[item.id].quantity += (parseInt(item.quantity) || 1);
-                        return acc;
-                    }, {});
-
-                    const uniqueItemIds = Object.keys(itemGroups);
-                    const stockSnapshots = new Map();
-
-                    // --- START TRANSACTION READS ---
-                    for (const id of uniqueItemIds) {
-                        const itemRef = doc(db, 'stock', id);
-                        const itemDoc = await transaction.get(itemRef);
-                        
-                        if (!itemDoc.exists()) {
-                            console.error("DEBUG TRANSACTION: Item not found", id);
-                            throw new Error(`Produto ${itemGroups[id].name} não encontrado no estoque.`);
-                        }
-
-                        // Organization check
-                        if (itemDoc.data().organizationId && itemDoc.data().organizationId !== orgId) {
-                            console.error("DEBUG TRANSACTION: Org Mismatch", { itemOrg: itemDoc.data().organizationId, targetOrg: orgId });
-                            throw new Error(`Conflito de Organização: O produto ${itemGroups[id].name} pertence a outra organização.`);
-                        }
-
-                        stockSnapshots.set(id, itemDoc);
+                // 2. Process Items (Group and Deduct Stock)
+                const itemGroups = saleData.items.reduce((acc, item) => {
+                    if (!item.id) return acc;
+                    if (!acc[item.id]) {
+                        acc[item.id] = { id: item.id, name: item.name, quantity: 0 };
                     }
-                    
-                    console.log("DEBUG TRANSACTION: Reads complete", uniqueItemIds.length, "unique items");
+                    acc[item.id].quantity += (parseInt(item.quantity) || 1);
+                    return acc;
+                }, {});
 
-                    // 2. Create Sale Record
-                    const saleRef = doc(collection(db, COLLECTION));
-                    const saleCode = generateReferenceCode('SALE');
-                    saleData.id = saleRef.id;
-                    saleData.code = saleCode; // Ensure code is persisted
-                    createdSaleId = saleRef.id;
+                for (const id of Object.keys(itemGroups)) {
+                    const group = itemGroups[id];
+                    const itemRef = doc(db, "stock", id);
+                    const itemDoc = await transaction.get(itemRef);
 
-                    // Clean data for Firestore
-                    const { settings: _, ...cleanSaleData } = saleData;
-
-                    transaction.set(saleRef, {
-                        ...cleanSaleData,
-                        postSaleContacted: false,
-                        code: saleCode,
-                        userId,
-                        organizationId: orgId,
-                        createdAt: serverTimestamp(),
-                        updatedAt: serverTimestamp(),
-                        status: 'completed'
-                    });
-
-                    console.log("DEBUG TRANSACTION: Sale record set", saleRef.id);
-
-                    // 3. Update Stock & Record Movements
-                    for (const id of uniqueItemIds) {
-                        const itemDoc = stockSnapshots.get(id);
-                        const group = itemGroups[id];
+                    if (itemDoc.exists()) {
                         const currentQty = parseInt(itemDoc.data().quantity) || 0;
-                        const qtyToDeduct = group.quantity;
+                        const newQty = currentQty - group.quantity;
 
-                        if (currentQty < qtyToDeduct) {
-                            console.error("DEBUG TRANSACTION: Insufficient stock", { name: group.name, currentQty, requested: qtyToDeduct });
-                            throw new Error(`Estoque insuficiente para ${group.name} (Disponível: ${currentQty})`);
-                        }
-
-                        const newQty = currentQty - qtyToDeduct;
-
-                        // A. Update Stock Doc
-                        transaction.update(itemDoc.ref, {
-                            quantity: newQty,
+                        transaction.update(itemRef, {
+                            quantity: Math.max(0, newQty),
                             updatedAt: serverTimestamp()
                         });
 
-                        // B. Record Movement
-                        const movementRef = doc(collection(db, 'stockMovements'));
-                        transaction.set(movementRef, {
+                        const moveRef = doc(collection(db, "stockMovements"));
+                        transaction.set(moveRef, {
                             stockId: id,
-                            productName: group.name,
+                            itemName: group.name,
                             type: 'out',
-                            quantity: qtyToDeduct,
+                            quantity: group.quantity,
                             previousQuantity: currentQty,
-                            newQuantity: newQty,
-                            reason: 'Venda',
-                            saleId: saleRef.id,
-                            saleCode: saleCode,
+                            newQuantity: Math.max(0, newQty),
+                            reason: 'Venda ' + saleCode,
                             userId,
                             organizationId: orgId,
                             createdAt: serverTimestamp()
                         });
                     }
+                }
 
-                    console.log("DEBUG TRANSACTION: Stock and Movements set");
+                // 3. Create Sale Record
+                const saleRef = doc(collection(db, COLLECTION));
+                createdSaleId = saleRef.id;
+                
+                const { settings: _, ...cleanSaleData } = saleData;
+                transaction.set(saleRef, {
+                    ...cleanSaleData,
+                    id: createdSaleId,
+                    code: saleCode,
+                    totalCost,
+                    feeAmount,
+                    netAmount,
+                    profit,
+                    organizationId: orgId,
+                    createdBy: userId,
+                    createdAt: serverTimestamp(),
+                    status: 'completed',
+                    postSaleContacted: false
+                });
 
-                    // 4. Financial Records (Movements & Receivables)
-                    const paymentEntries = saleData.paymentEntries || [{
-                        method: saleData.paymentMethod || 'pix',
-                        amount: saleData.total,
-                        installments: saleData.installments || 1
-                    }];
+                // 4. Financial Records
+                const paymentEntries = saleData.paymentEntries || [{
+                    method: saleData.paymentMethod || 'pix',
+                    amount: saleData.total,
+                    installments: saleData.installments || 1
+                }];
 
-                    for (const entry of paymentEntries) {
-                        const method = entry.method || 'pix';
-                        const amount = parseFloat(entry.amount);
-                        const installments = parseInt(entry.installments) || 1;
+                for (const entry of paymentEntries) {
+                    const method = entry.method || 'pix';
+                    const amount = parseFloat(entry.amount);
+                    const installments = parseInt(entry.installments) || 1;
 
-                        // A. Financial Movement
-                        if (['cash', 'pix', 'debit', 'transfer'].includes(method) && installments === 1) {
-                            const moveRef = doc(collection(db, 'financialMovements'));
-                            transaction.set(moveRef, {
-                                type: 'income',
-                                description: `Venda #${saleCode} (${method.toUpperCase()})`,
-                                amount: amount,
-                                category: 'Vendas',
-                                origin: 'sale',
-                                referenceId: saleRef.id,
+                    // Financial Movement (Income)
+                    if (['cash', 'pix', 'debit', 'transfer'].includes(method) && installments === 1) {
+                        const moveRef = doc(collection(db, 'financialMovements'));
+                        transaction.set(moveRef, {
+                            type: 'income',
+                            description: `Venda #${saleCode} (${method.toUpperCase()})`,
+                            amount: amount,
+                            category: 'Vendas',
+                            origin: 'sale',
+                            referenceId: createdSaleId,
+                            organizationId: orgId,
+                            date: serverTimestamp(),
+                            createdAt: serverTimestamp()
+                        });
+                    }
+
+                    // Receivables
+                    const needsReceivable = method === 'fiado' ||
+                        (method === 'cash' && installments > 1) ||
+                        ['credit', 'card', 'card_online'].includes(method);
+                        
+                    if (needsReceivable) {
+                        const baseAmount = amount / installments;
+                        for (let i = 0; i < installments; i++) {
+                            const receivableRef = doc(collection(db, 'receivables'));
+                            let dueDate = new Date();
+                            if (entry.dueDate) {
+                                const parts = entry.dueDate.split('-');
+                                const baseDate = new Date(parts[0], parts[1] - 1, parts[2], 12, 0, 0);
+                                dueDate = new Date(baseDate);
+                                dueDate.setDate(baseDate.getDate() + (30 * i));
+                            } else {
+                                dueDate.setDate(dueDate.getDate() + (30 * (i + 1)));
+                            }
+
+                            transaction.set(receivableRef, {
                                 organizationId: orgId,
-                                date: serverTimestamp(),
-                                createdAt: serverTimestamp()
+                                customerName: saleData.client?.name || 'Consumidor',
+                                description: `Venda #${saleCode} (${method.toUpperCase()}) - Parc. ${i + 1}/${installments}`,
+                                amount: baseAmount,
+                                dueDate: dueDate.toISOString().split('T')[0],
+                                status: 'pending',
+                                saleId: createdSaleId,
+                                createdAt: serverTimestamp(),
+                                createdBy: userId,
+                                originalMethod: method
                             });
                         }
-
-                        // B. Receivables
-                        const needsReceivable = entry.method === 'fiado' ||
-                            (entry.method === 'cash' && installments > 1) ||
-                            ['credit', 'card'].includes(entry.method);
-                            
-                        if (needsReceivable) {
-                            const baseAmount = amount / installments;
-                            for (let i = 0; i < installments; i++) {
-                                const receivableRef = doc(collection(db, 'receivables'));
-                                let dueDate = new Date();
-                                if (entry.dueDate) {
-                                    const parts = entry.dueDate.split('-');
-                                    const baseDate = new Date(parts[0], parts[1] - 1, parts[2], 12, 0, 0);
-                                    dueDate = new Date(baseDate);
-                                    dueDate.setDate(baseDate.getDate() + (30 * i));
-                                } else {
-                                    dueDate.setDate(dueDate.getDate() + (30 * (i + 1)));
-                                }
-
-                                transaction.set(receivableRef, {
-                                    organizationId: orgId,
-                                    customerName: saleData.client?.name || 'Consumidor',
-                                    description: `Venda #${saleCode} (${method.toUpperCase()}) - Parc. ${i + 1}/${installments}`,
-                                    amount: baseAmount,
-                                    dueDate: dueDate.toISOString().split('T')[0],
-                                    status: 'pending',
-                                    saleId: saleRef.id,
-                                    createdAt: serverTimestamp(),
-                                    createdBy: userId,
-                                    originalMethod: method
-                                });
-                            }
-                        }
                     }
-                });
+                }
             });
-            console.log("DEBUG: Transaction committed successfully");
-
-            return createdSaleId; // Return the captured sale ID
+            return createdSaleId;
         } catch (error) {
             console.error("Error creating sale:", error);
             throw error;

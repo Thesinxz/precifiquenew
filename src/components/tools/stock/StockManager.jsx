@@ -190,7 +190,7 @@ export function StockManager({ user, userProfile, settings, isSalesMode }) {
                 }
                 // Add more logic or AI-based standardization here
                 if (newName !== item.name) {
-                    await StockService.updateItem(item.id, { name: newName }, orgId);
+                    await StockService.updateItem(orgId, userId, item.id, { name: newName });
                     count++;
                 }
             }
@@ -212,22 +212,27 @@ export function StockManager({ user, userProfile, settings, isSalesMode }) {
         setIsLoading(true);
         try {
             for (const it of newItems) {
-                const formData = {
-                    name: it.productName || "Produto Não Identificado",
-                    category: it.category || "",
-                    quantity: String(it.quantity || 1),
-                    cost: String(it.cost || 0),
-                    price: String((parseFloat(it.cost) || 0) * 1.3), // Basic markup
-                    storage: it.storage || "",
-                    color: it.color || "",
-                    type: (it.category || "").toLowerCase().includes('peça') ? 'part' : 'device',
-                    imageUrl: getProductImage(it.productName, it.color) || ""
-                };
-                await StockService.addItem(orgId, userId, formData);
+                try {
+                    const formData = {
+                        name: it.productName || "Produto Não Identificado",
+                        category: it.category || "",
+                        quantity: String(it.quantity || 1),
+                        cost: String(it.cost || 0),
+                        price: String((parseFloat(it.cost) || 0) * 1.3), // Basic markup
+                        storage: it.storage || "",
+                        color: it.color || "",
+                        type: (it.category || "").toLowerCase().includes('peça') ? 'part' : 'device',
+                        imageUrl: getProductImage(it.productName, it.color) || ""
+                    };
+                    await StockService.addItem(orgId, userId, formData);
+                } catch (err) {
+                    console.error("Erro ao importar item individual:", it, err);
+                }
             }
-            showToast(`${newItems.length} itens importados!`, "success");
+            showToast(`${newItems.length} itens processados!`, "success");
             loadData();
-        } catch {
+        } catch (error) {
+            console.error("Erro geral na importação AI:", error);
             showToast("Erro na importação", "error");
         } finally {
             setIsLoading(false);

@@ -40,8 +40,30 @@ export const StockService = {
     addItem: async (orgId, userId, itemData) => {
         if (!orgId || !userId) throw new Error("Org ID and User ID required");
 
+        const cleanNumber = (val) => {
+            if (typeof val === 'number') return val;
+            if (!val) return 0;
+            
+            // Remove R$, $, and spaces
+            let cleaned = val.toString().replace(/[R$\s]/g, '');
+            
+            // Handle different decimal/thousand formats
+            // If there's a comma and a dot, comma is likely decimal (BR) 
+            // OR if there's only a comma, it's decimal (BR)
+            // If there's only a dot, it's likely decimal (US)
+            if (cleaned.includes(',') && cleaned.includes('.')) {
+                // BR format: 1.250,50 -> remove dot, replace comma with dot
+                cleaned = cleaned.replace(/\./g, '').replace(',', '.');
+            } else if (cleaned.includes(',')) {
+                // BR format: 950,00 -> replace comma with dot
+                cleaned = cleaned.replace(',', '.');
+            }
+            // If only dot exists, assume it's already decimal (950.00)
+            
+            return parseFloat(cleaned) || 0;
+        };
+
         try {
-            // Clean data: remove id if present
             const { id, ...data } = itemData;
 
             const docRef = await addDoc(collection(db, COLLECTION_NAME), {
@@ -49,8 +71,8 @@ export const StockService = {
                 organizationId: orgId,
                 createdBy: userId,
                 quantity: parseInt(data.quantity) || 0,
-                cost: parseFloat(data.cost) || 0,
-                price: parseFloat(data.price) || 0,
+                cost: cleanNumber(data.cost),
+                price: cleanNumber(data.price),
                 createdAt: serverTimestamp(),
                 updatedAt: serverTimestamp()
             });

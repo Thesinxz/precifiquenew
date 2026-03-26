@@ -7,6 +7,7 @@ import { fetchAddressByCEP } from '../../services/addressService';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../../lib/firebase';
+import { UserService } from '../../services/UserService';
 import {
     Loader2,
     ArrowLeft,
@@ -119,10 +120,22 @@ export function SignupPage() {
     const onSubmit = async (data) => {
         setIsLoading(true);
         try {
-            if (signupType === 'seller' && !data.orgCode) {
-                showToast("Insira o código da loja.", "error");
-                setIsLoading(false);
-                return;
+            const trimmedOrgCode = data.orgCode?.trim();
+
+            if (signupType === 'seller') {
+                if (!trimmedOrgCode) {
+                    showToast("Insira o código da loja.", "error");
+                    setIsLoading(false);
+                    return;
+                }
+
+                // Validate Organization Code
+                const isValid = await UserService.validateOrganization(trimmedOrgCode);
+                if (!isValid) {
+                    showToast("Código de Loja inválido ou não encontrado. Verifique com seu gerente.", "error");
+                    setIsLoading(false);
+                    return;
+                }
             }
 
             const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
@@ -131,7 +144,7 @@ export function SignupPage() {
 
             const userProfile = {
                 uid: user.uid,
-                organizationId: signupType === 'owner' ? user.uid : data.orgCode,
+                organizationId: signupType === 'owner' ? user.uid : trimmedOrgCode,
                 name: data.fullName,
                 email: data.email,
                 document: data.document.replace(/\D/g, ''),

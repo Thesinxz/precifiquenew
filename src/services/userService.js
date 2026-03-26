@@ -119,5 +119,26 @@ export const UserService = {
             console.error("Error deleting user:", error);
             throw error;
         }
+    },
+
+    /**
+     * Validate if an organization code (UID) exists
+     */
+    validateOrganization: async (orgId) => {
+        if (!orgId) return false;
+        try {
+            // Check if the organization owner's profile exists
+            const docRef = doc(db, COLLECTION_NAME, orgId);
+            const docSnap = await getDoc(docRef);
+            
+            if (!docSnap.exists()) return false;
+            
+            const data = docSnap.data();
+            // Ensure the user is actually an owner
+            return data.role === 'owner';
+        } catch (error) {
+            console.error("Error validating organization:", error);
+            return false;
+        }
     }
 };

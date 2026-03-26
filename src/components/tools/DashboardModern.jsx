@@ -45,7 +45,8 @@ export function DashboardModern({ user, userProfile }) {
     const [recentSales, setRecentSales] = useState([]);
     const [chartData, setChartData] = useState([]);
 
-    const orgId = userProfile?.organizationId || user?.uid;
+    const isOwner = userProfile?.role === 'owner';
+    const orgId = isOwner ? (userProfile?.uid || user?.uid) : userProfile?.organizationId;
 
     const loadDashboardData = useCallback(async () => {
         setLoading(true);
@@ -172,6 +173,27 @@ export function DashboardModern({ user, userProfile }) {
 
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-slate-950 p-6 md:p-12 transition-colors duration-500">
+            {/* Warning Banner for missing Org Connection */}
+            {!orgId && !isOwner && (
+                <div className="mb-8 p-6 bg-red-50 dark:bg-red-900/10 border-2 border-red-100 dark:border-red-900/20 rounded-[2rem] flex flex-col md:flex-row items-center justify-between gap-6 animate-in slide-in-from-top-4 duration-500 shadow-xl shadow-red-100/20">
+                    <div className="flex items-center gap-5 text-center md:text-left">
+                        <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-2xl flex items-center justify-center text-red-600 dark:text-red-400 shrink-0 shadow-inner">
+                            <Users className="w-8 h-8" strokeWidth={2.5} />
+                        </div>
+                        <div>
+                            <h3 className="text-lg font-black text-red-900 dark:text-red-100 uppercase tracking-tighter italic leading-tight">Vínculo com Loja não encontrado!</h3>
+                            <p className="text-sm font-bold text-red-600 dark:text-red-300 opacity-80 mt-1">Seu perfil não está corretamente vinculado a uma organização. Algumas funções como a Vitrine não funcionarão.</p>
+                        </div>
+                    </div>
+                    <button 
+                        onClick={() => navigate('/dashboard/profile')}
+                        className="w-full md:w-auto px-8 py-4 bg-red-600 text-white rounded-2xl font-black uppercase tracking-widest text-[11px] shadow-2xl shadow-red-200 hover:bg-red-700 active:scale-95 transition-all flex items-center justify-center gap-3"
+                    >
+                        Completar Vínculo
+                    </button>
+                </div>
+            )}
+
             {/* Header */}
             <div className="w-full mb-12">
                 <div className="flex items-center justify-between mb-2">
@@ -284,8 +306,15 @@ export function DashboardModern({ user, userProfile }) {
                             label="Link Vitrine"
                             color="blue"
                             onClick={() => {
+                                const orgId = userProfile?.role === 'owner' ? (userProfile?.uid || user?.uid) : userProfile?.organizationId;
+                                
+                                if (!orgId && userProfile?.role !== 'owner') {
+                                    showToast("Erro: Vínculo com a loja não encontrado. Verifique seu perfil.", "error");
+                                    return;
+                                }
+
                                 const sellerName = userProfile?.name || user?.displayName || user?.email?.split('@')[0];
-                                const catalogUrl = `${window.location.origin}/public/catalog/${userProfile?.organizationId || user?.uid || 'default'}?s=${encodeURIComponent(sellerName)}`;
+                                const catalogUrl = `${window.location.origin}/public/catalog/${orgId || user?.uid || 'default'}?s=${encodeURIComponent(sellerName)}`;
                                 window.open(catalogUrl, '_blank');
                             }}
                         />
