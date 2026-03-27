@@ -274,75 +274,6 @@ export const PrintingService = {
          `;
     },
 
-    _generateTechReceipt: (item, settings) => {
-        const dateStr = item.createdAt ? new Date(item.createdAt.seconds * 1000).toLocaleString('pt-BR') : new Date().toLocaleString('pt-BR');
-        const storeName = settings?.company?.name || settings?.storeName || "ASSISTÊNCIA TÉCNICA";
-
-        const accessoriesIn = item.accessoriesIn?.join(', ') || 'Nenhum';
-        const accessoriesOut = item.accessoriesOut?.join(', ') || 'Nenhum';
-        const totals = item.totals || { finalTotal: 0, prePaymentTotal: 0, remainingTotal: 0 };
-
-        return `
-            <div class="receipt-container os-receipt">
-                <div style="text-align:center; margin-bottom: 10px;">
-                    <h2 style="margin:0; font-size:16px;">${storeName.toUpperCase()}</h2>
-                    <p style="margin:2px 0; font-size:10px;">ORDEM DE SERVIÇO</p>
-                    <p style="margin:0; font-size:14px; font-weight: 900;">#${item.osNumber || '---'}</p>
-                    <p style="margin:0; font-size:9px;">${dateStr}</p>
-                </div>
-
-                <div class="border-t py-1">
-                    <p style="margin:2px 0; font-size:11px;"><strong>CLIENTE:</strong> ${item.ownerName || 'Balcão'}</p>
-                    <p style="margin:2px 0; font-size:11px;"><strong>FONE:</strong> ${item.ownerPhone || '-'}</p>
-                </div>
-
-                <div class="border-t py-1">
-                    <p style="margin:2px 0; font-size:11px;"><strong>EQUIPAMENTO:</strong> ${item.brand} ${item.model}</p>
-                    ${item.serialNumber ? `<p style="margin:2px 0; font-size:11px;"><strong>SN/IMEI:</strong> ${item.serialNumber}</p>` : ''}
-                    <p style="margin:2px 0; font-size:11px;"><strong>SENHA:</strong> ${item.passwordType === 'pattern' ? '[PADRÃO DESENHADO]' : (item.password || 'Nenhuma')}</p>
-                </div>
-
-                <div class="border-t py-1">
-                    <p style="margin:2px 0; font-size:11px;"><strong>PROBLEMA RELATADO:</strong></p>
-                    <p style="margin:2px 0; font-size:10px; font-weight: 500;">${item.problem || 'Nenhuma observação.'}</p>
-                    <p style="margin:2px 0; font-size:10px;"><strong>FICOU NA LOJA:</strong> ${accessoriesIn}</p>
-                    <p style="margin:2px 0; font-size:10px;"><strong>ENTREGUE AO CLIENTE:</strong> ${accessoriesOut}</p>
-                </div>
-
-                <div class="border-t py-1">
-                    <div style="display:flex; justify-content:space-between; font-size:10px;">
-                        <span>ORÇAMENTO:</span>
-                        <span>${formatCurrency(totals.finalTotal)}</span>
-                    </div>
-                    ${totals.prePaymentTotal > 0 ? `
-                        <div style="display:flex; justify-content:space-between; font-size:10px;">
-                            <span>ADIANTAMENTO:</span>
-                            <span>-${formatCurrency(totals.prePaymentTotal)}</span>
-                        </div>
-                    ` : ''}
-                    <div style="display:flex; justify-content:space-between; font-size:13px; font-weight: 900; margin-top: 4px;">
-                        <span>SALDO A PAGAR:</span>
-                        <span>${formatCurrency(totals.remainingTotal)}</span>
-                    </div>
-                </div>
-
-                <div style="margin-top: 25px; border-top: 1px solid black; text-align:center; padding-top: 5px;">
-                    <p style="font-size:9px; font-weight: 700;">ASSINATURA DO CLIENTE</p>
-                </div>
-
-                <div style="margin-top: 15px; text-align:center; font-size:8px; font-weight: 500;">
-                    <p>Prazo Médio: ${item.estimatedWait || 60} min.<br/>
-                    A garantia é de 90 dias apenas para o serviço realizado.<br/>
-                    O não cumprimento do prazo de retirada em 90 dias após a finalização implica em abandono do equipamento conforme o Código Civil.</p>
-                </div>
-
-                <div class="text-center" style="margin-top: 10px;">
-                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=OS_${item.id}" style="width: 40px; height: 40px;" />
-                    <p style="font-size: 7px; margin: 0;">Acompanhe em nosso site</p>
-                </div>
-            </div>
-        `;
-    },
 
     getPrintStyles: (type = 'label') => {
         const isReceipt = type === 'receipt' || type === 'tech_receipt';
@@ -730,7 +661,7 @@ export const PrintingService = {
 
         const formatCurrency = (val) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
 
-        const totals = os.totals || { finalTotal: 0, prePaymentTotal: 0, remainingTotal: 0 };
+
         const subtotal = (os.parts?.reduce((acc, p) => acc + (Number(p.price) || 0), 0) || 0) + (Number(os.laborValue) || 0);
         const finalTotal = subtotal - (Number(os.discount) || 0);
         const remaining = finalTotal - (Number(os.prePayment) || 0);
@@ -1008,7 +939,9 @@ export const PrintingService = {
                 doc.text("ACOMPANHE O STATUS", 130, currentY + 10, { align: 'right' });
                 doc.text("Escaneie o código ao lado", 130, currentY + 14, { align: 'right' });
             }
-        } catch (e) { }
+        } catch (error) {
+            console.error("QR Code generation error:", error);
+        }
 
         // 7. Terms & Conditions
         currentY = 245;

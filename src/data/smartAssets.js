@@ -57,9 +57,6 @@ const COLOR_MAP = {
     'titânio-cobre': 'copper-titanium',
     'copper titanium': 'copper-titanium',
     'bronze': 'bronze-titanium',
-    'teal': 'teal-titanium',
-    // iPhone 16 Colors
-    'verde-acinzentado': 'teal',
     'teal': 'teal',
     'ultramarino': 'ultramarine',
     'ultramarine': 'ultramarine',
@@ -75,19 +72,14 @@ const COLOR_MAP = {
     'branco-nuvem': 'cloud-white',
     'dourado-claro': 'pale-gold',
 
-    // Cleaning up variations
     'titânio preto': 'black-titanium',
     'titânio branco': 'white-titanium',
     'titânio natural': 'natural-titanium',
     'titanium black': 'black-titanium',
     'titanium white': 'white-titanium',
     'titanium natural': 'natural-titanium',
-    'preto-espacial': 'space-black',
     'space-black': 'space-black',
-    'roxo-profundo': 'deep-purple',
     'deep-purple': 'deep-purple',
-    'azul-sierra': 'sierra-blue',
-    'verde-alpino': 'alpine-green',
     'verde meia-noite': 'midnight-green',
     'azul-pacífico': 'pacific-blue'
 };

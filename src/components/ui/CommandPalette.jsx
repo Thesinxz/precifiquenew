@@ -45,10 +45,6 @@ export function CommandPalette({ isOpen, onClose }) {
     };
 
     useEffect(() => {
-        setSelectedIndex(0);
-    }, [searchTerm]);
-
-    useEffect(() => {
         const handleKeyDown = (e) => {
             if (!isOpen) return;
             if (e.key === 'ArrowDown') {
@@ -67,7 +63,7 @@ export function CommandPalette({ isOpen, onClose }) {
         };
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [isOpen, filtered, selectedIndex]);
+    }, [isOpen, filtered, selectedIndex, handleNavigate, onClose]);
 
     if (!isOpen) return null;
 
@@ -84,7 +80,10 @@ export function CommandPalette({ isOpen, onClose }) {
                         placeholder="O que você deseja fazer?"
                         className="flex-1 bg-transparent border-none outline-none text-xl font-bold text-slate-700 dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-600"
                         value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
+                        onChange={(e) => {
+                            setSearchTerm(e.target.value);
+                            setSelectedIndex(0);
+                        }}
                     />
                     <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 rounded-xl text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
                         <kbd>ESC</kbd>
