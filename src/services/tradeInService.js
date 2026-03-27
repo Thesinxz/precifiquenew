@@ -1,5 +1,5 @@
 import { db } from "../lib/firebase";
-import { doc, getDoc, collection, addDoc, serverTimestamp, runTransaction } from "firebase/firestore";
+import { doc, collection, serverTimestamp, runTransaction } from "firebase/firestore";
 
 export const TradeInService = {
     /**

@@ -1,7 +1,6 @@
 import { db } from "../lib/firebase";
 import {
     collection,
-    addDoc,
     query,
     where,
     getDocs,
@@ -560,7 +559,7 @@ export const SalesService = {
                 const profit = netAmount - totalCost;
 
                 // remove settings from updatedData before saving to reference to avoid bloating the document
-                const { settings, ...cleanData } = updatedData;
+                const { settings: _, ...cleanData } = updatedData;
 
                 // Update Sale
                 transaction.update(saleRef, {
