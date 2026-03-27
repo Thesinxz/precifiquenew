@@ -7,7 +7,7 @@ import { fetchAddressByCEP } from '../../services/addressService';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../../lib/firebase';
-import { UserService } from '../../services/UserService';
+import { UserService } from '../../services/userService';
 import {
     Loader2,
     ArrowLeft,
