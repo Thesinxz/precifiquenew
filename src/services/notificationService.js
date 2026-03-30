@@ -29,7 +29,7 @@ class NotificationService {
             console.log('Service Worker registered:', registration);
 
             // Initialize Firebase Messaging
-            const { messaging } = await import('firebase/messaging');
+            await import('firebase/messaging');
             this.messaging = getMessaging();
 
             return true;

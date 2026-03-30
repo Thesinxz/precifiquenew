@@ -39,7 +39,7 @@ export const FiscalService = {
     /**
      * Upload Digital Certificate (Mock)
      */
-    uploadCertificate: async (orgId, file, password) => {
+    uploadCertificate: async (orgId, file, _password) => {
         try {
             // In a real app, this would upload the .pfx file to a secure storage bucket
             // and maybe send it to a server-side function to validate and install.

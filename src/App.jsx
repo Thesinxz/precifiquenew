@@ -1,11 +1,11 @@
 import { useState, useEffect, lazy, Suspense } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useSearchParams, useParams, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useSearchParams, useParams, useNavigate } from 'react-router-dom';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
-import { ToastProvider, useToast } from "./components/ui/Toast";
+import { ToastProvider } from "./components/ui/Toast";
 import { SettingsService } from "./services/settingsService";
 import { Loader2, LogOut, ExternalLink } from 'lucide-react';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { auth, db } from './lib/firebase';
+import { auth } from './lib/firebase';
 import { DashboardLayout } from './components/layout/DashboardLayout';
 import { UserService } from './services/userService';
 import { NotificationProvider } from './contexts/NotificationContext';
@@ -55,18 +55,10 @@ const DashboardPage = lazy(() => import('./components/tools/DashboardModern').th
 // --- Guards & Wrappers ---
 
 function InAppBrowserGuard({ children }) {
-  const [isInAppBrowser, setIsInAppBrowser] = useState(false);
-
-  useEffect(() => {
-    const ua = navigator.userAgent || navigator.vendor || window.opera;
-    const isInstagram = ua.indexOf('Instagram') > -1;
-    const isFacebook = ua.indexOf('FBAN') > -1 || ua.indexOf('FBAV') > -1;
-    const isLinkedIn = ua.indexOf('LinkedIn') > -1;
-
-    if (isInstagram || isFacebook || isLinkedIn) {
-      setIsInAppBrowser(true);
-    }
-  }, []);
+  const [isInAppBrowser] = useState(() => {
+    const ua = navigator.userAgent || navigator.vendor || window.opera || '';
+    return ua.indexOf('Instagram') > -1 || ua.indexOf('FBAN') > -1 || ua.indexOf('FBAV') > -1 || ua.indexOf('LinkedIn') > -1;
+  });
 
   if (isInAppBrowser) {
     return (
@@ -95,7 +87,7 @@ function SubscriptionGuard({ userProfile, onLogout, children }) {
   const isOwner = role === 'owner';
   const isStaff = role === 'admin' || role === 'seller';
   const isTrialExpired = !isOwner && !isStaff && status === 'trial' && trialStartDate && (
-    (Date.now() - new Date(trialStartDate).getTime()) > (7 * 24 * 60 * 60 * 1000)
+    (new Date().getTime() - new Date(trialStartDate).getTime()) > (7 * 24 * 60 * 60 * 1000)
   );
   const shouldBlock = (status === 'expired' && !isOwner) || isTrialExpired;
 

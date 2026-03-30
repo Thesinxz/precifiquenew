@@ -56,28 +56,6 @@ export const HistoryService = {
                 createdAt: doc.data().createdAt?.toDate() || new Date()
             }));
         } catch (error) {
-            // Fallback for missing index
-            if (error.code === 'failed-precondition') {
-                console.warn("Missing Index for History! Falling back to client-side sort.");
-                try {
-                    const qSimple = query(
-                        collection(db, COLLECTION_NAME),
-                        where("userId", "==", userId)
-                    );
-                    const snapshot = await getDocs(qSimple);
-                    const items = snapshot.docs.map(doc => ({
-                        id: doc.id,
-                        ...doc.data(),
-                        createdAt: doc.data().createdAt?.toDate() || new Date()
-                    }));
-
-                    return items
-                        .sort((a, b) => a.createdAt - b.createdAt)
-                        .slice(0, limitCount);
-                } catch (fallbackError) {
-                    throw fallbackError;
-                }
-            }
             console.error("Error fetching history:", error);
             throw error;
         }

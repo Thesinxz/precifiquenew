@@ -3,7 +3,7 @@ import { InputGroup } from './_Shared';
 
 export function GiftsSettings({ data, onChange, userProfile }) {
     // data: { gifts: [{id, name, cost}] }
-    const orgId = userProfile?.organizationId || userProfile?.uid;
+    // data: { gifts: [{id, name, cost}] }
 
     const handleGiftUpdate = (newGifts) => {
         onChange({ ...data, gifts: newGifts });

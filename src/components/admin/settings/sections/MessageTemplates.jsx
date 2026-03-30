@@ -4,7 +4,6 @@ import { cn } from '../../../../lib/utils'; // Adjust path if needed, usually ..
 
 export function MessageTemplates({ data, categories, onChange }) {
     const [selectedCatId, setSelectedCatId] = useState(categories?.[0]?.id);
-    const [previewMode, setPreviewMode] = useState(false);
     const textareaRef = useRef(null);
 
     const activeCategory = categories?.find(c => c.id === selectedCatId);

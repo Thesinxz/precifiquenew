@@ -13,7 +13,7 @@ export function ProfileSettings({ data, onChange }) {
 
     // Auth Profile State (synced on load or managed locally)
     const [displayName, setDisplayName] = useState(auth.currentUser?.displayName || '');
-    const [photoURL, setPhotoURL] = useState(auth.currentUser?.photoURL || '');
+    const photoURL = auth.currentUser?.photoURL || '';
 
     // Handle Auth Profile Update (Display Name)
     const handleUpdateAuthProfile = async () => {

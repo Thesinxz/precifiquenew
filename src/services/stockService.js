@@ -64,7 +64,7 @@ export const StockService = {
         };
 
         try {
-            const { id, ...data } = itemData;
+            const { id: _, ...data } = itemData;
 
             const docRef = await addDoc(collection(db, COLLECTION_NAME), {
                 ...data,
@@ -227,7 +227,7 @@ export const StockService = {
             const trashSnap = await getDoc(trashRef);
 
             if (trashSnap.exists()) {
-                const { originalId, deletedBy, deletedAt, type, ...stockData } = trashSnap.data();
+                const { originalId: _, deletedBy: __, deletedAt: ___, type: ____, ...stockData } = trashSnap.data();
 
                 // Add back to stock
                 await addDoc(collection(db, COLLECTION_NAME), {

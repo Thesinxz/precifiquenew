@@ -3,7 +3,8 @@ import { User, Building2, MapPin, Save, Loader2, Camera, Phone } from 'lucide-re
 import { useToast } from '../../ui/Toast';
 import { auth } from '../../../lib/firebase';
 import { updateProfile, sendPasswordResetEmail } from 'firebase/auth';
-import { maskCPF, maskCNPJ, maskCEP, maskPhone } from '../../../lib/utils';
+import { maskCNPJ, maskPhone } from '../../../lib/utils';
+import { UserService } from '../../../services/userService';
 
 export function ProfilePage({ settings, onSave, userProfile, onProfileUpdate }) {
     const { showToast } = useToast();

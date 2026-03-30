@@ -27,7 +27,7 @@ import { useToast } from '../ui/Toast';
 import { cn, formatCurrency } from '../../lib/utils';
 import { startOfMonth, endOfMonth, format } from 'date-fns';
 
-export function TeamPage({ userProfile }) {
+export function TeamPage({ user, userProfile }) {
     const [team, setTeam] = useState([]);
     const [sales, setSales] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -55,7 +55,7 @@ export function TeamPage({ userProfile }) {
 
     const { showToast } = useToast();
     const isOwner = userProfile?.role === 'owner';
-    const orgId = isOwner ? (userProfile?.uid || userProfile?.id) : userProfile?.organizationId;
+    const orgId = userProfile?.organizationId || user?.uid;
 
     useEffect(() => {
         if (orgId) {

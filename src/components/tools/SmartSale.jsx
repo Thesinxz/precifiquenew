@@ -5,7 +5,7 @@ import { Timestamp, addDoc, collection } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { useToast } from '../ui/Toast';
 import {
-    Plus, User, Search, ShoppingCart, Loader2, Check,
+    Plus, User, Users, Search, ShoppingCart, Loader2, Check,
     Smartphone, X, Package, TicketPercent, Wallet,
     CreditCard, Banknote, Calendar, Wrench, ChevronLeft, ChevronDown,
     Clock, History, ArrowUpRight, ShoppingBag, FileText, Printer,

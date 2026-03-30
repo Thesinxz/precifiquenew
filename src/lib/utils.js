@@ -35,7 +35,7 @@ export function formatDate(date) {
             hour: '2-digit',
             minute: '2-digit'
         }).format(d);
-    } catch (e) {
+    } catch (_) {
         return '-';
     }
 }
